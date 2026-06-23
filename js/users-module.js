@@ -1,5 +1,5 @@
 // ============================================
-// ===== users-module.js - وحدة المستخدمين =====
+// ===== users-module.js =====
 // ============================================
 
 const UsersModule = {
@@ -7,20 +7,17 @@ const UsersModule = {
     currentSortDir: 'desc',
     currentFilters: {},
 
-    // عرض المستخدمين
     render() {
         this.renderTable();
         this.updateCount();
     },
 
-    // تحديث العدد
     updateCount() {
         const users = DataManager.filterUsers(this.currentFilters);
         const countEl = document.getElementById('usersCount');
         if (countEl) countEl.textContent = users.length;
     },
 
-    // عرض الجدول
     renderTable() {
         const tbody = document.getElementById('usersTableBody');
         if (!tbody) return;
@@ -45,7 +42,7 @@ const UsersModule = {
         }
         
         tbody.innerHTML = users.map(([id, user]) => {
-            const data = user.data || {};
+            const data = user?.data || {};
             const deviceInfo = data.deviceInfo || {};
             const location = data.location;
             const points = user.points || 0;
@@ -84,7 +81,6 @@ const UsersModule = {
         }).join('');
     },
 
-    // فلترة المستخدمين
     filter() {
         this.currentFilters = {
             search: document.getElementById('userSearch')?.value || '',
@@ -100,7 +96,6 @@ const UsersModule = {
         this.updateCount();
     },
 
-    // ترتيب الجدول
     sortTable(column) {
         if (this.currentSort === column) {
             this.currentSortDir = this.currentSortDir === 'desc' ? 'asc' : 'desc';
@@ -111,7 +106,6 @@ const UsersModule = {
         this.renderTable();
     },
 
-    // عرض تفاصيل المستخدم
     viewUser(id) {
         const user = DataManager.getUser(id);
         if (!user) return;
@@ -205,7 +199,6 @@ const UsersModule = {
         UIUtils.openModal('userModal');
     },
 
-    // نسخ معلومات المستخدم
     async copyUserInfo(id) {
         const user = DataManager.getUser(id);
         if (!user) return;
@@ -213,8 +206,7 @@ const UsersModule = {
         const data = user.data || {};
         const location = data.location;
         
-        const info = `
-=== معلومات المستخدم ===
+        const info = `=== معلومات المستخدم ===
 المعرف: ${id}
 النقاط: ${user.points || 0}
 الجهاز: ${data.deviceInfo?.deviceType || 'غير معروف'}
@@ -222,16 +214,14 @@ const UsersModule = {
 المتصفح: ${data.deviceInfo?.browser || 'غير معروف'}
 IP: ${data.ipAddress || 'غير معروف'}
 الموقع: ${location ? `${location.lat}, ${location.lng}` : 'غير محدد'}
-آخر زيارة: ${UIUtils.formatFullTime(data.lastUpdate)}
-        `.trim();
+آخر زيارة: ${UIUtils.formatFullTime(data.lastUpdate)}`;
         
         await UIUtils.copyToClipboard(info);
     },
 
-    // تصدير المستخدمين إلى CSV
     exportCSV() {
         const users = DataManager.filterUsers(this.currentFilters).map(([id, user]) => {
-            const data = user.data || {};
+            const data = user?.data || {};
             const deviceInfo = data.deviceInfo || {};
             const location = data.location;
             
@@ -256,7 +246,6 @@ IP: ${data.ipAddress || 'غير معروف'}
         UIUtils.exportToCSV(users, 'users');
     },
 
-    // تصدير المستخدمين إلى JSON
     exportJSON() {
         const users = DataManager.filterUsers(this.currentFilters).map(([id, user]) => ({
             id, ...user
@@ -265,9 +254,3 @@ IP: ${data.ipAddress || 'غير معروف'}
         UIUtils.exportToJSON(users, 'users');
     }
 };
-
-// دوال عامة للوصول من HTML
-function filterUsers() { UsersModule.filter(); }
-function sortTable(col) { UsersModule.sortTable(col); }
-function exportUsersCSV() { UsersModule.exportCSV(); }
-function exportUsersJSON() { UsersModule.exportJSON(); }
