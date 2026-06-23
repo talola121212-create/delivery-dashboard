@@ -1,5 +1,5 @@
 // ============================================
-// ===== ui-utils.js - أدوات واجهة المستخدم =====
+// ===== ui-utils.js =====
 // ============================================
 
 const UIUtils = {
@@ -63,7 +63,7 @@ const UIUtils = {
         return '<span class="badge error">🔴 غير متصل</span>';
     },
 
-    openGoogleMaps(lat, lng, label = '') {
+    openGoogleMaps(lat, lng) {
         const url = `https://www.google.com/maps?q=${lat},${lng}&z=17`;
         window.open(url, '_blank');
     },
@@ -103,6 +103,7 @@ const UIUtils = {
 
     toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
+        if (!sidebar) return;
         if (window.innerWidth <= 768) {
             sidebar.classList.toggle('mobile-open');
         } else {
@@ -111,20 +112,27 @@ const UIUtils = {
     },
 
     openModal(id) {
-        document.getElementById(id).classList.add('active');
+        const modal = document.getElementById(id);
+        if (modal) modal.classList.add('active');
     },
 
     closeModal(id) {
-        document.getElementById(id).classList.remove('active');
+        const modal = document.getElementById(id);
+        if (modal) modal.classList.remove('active');
     },
 
     toggleNotifications() {
-        document.getElementById('notificationsPanel').classList.toggle('active');
+        const panel = document.getElementById('notificationsPanel');
+        if (panel) panel.classList.toggle('active');
     },
 
     addNotification(title, message, type = 'info') {
         const list = document.getElementById('notificationsList');
         if (!list) return;
+        
+        // إزالة رسالة "لا توجد إشعارات"
+        const empty = list.querySelector('.empty-state');
+        if (empty) empty.remove();
         
         const item = document.createElement('div');
         item.className = 'notification-item unread';
@@ -135,6 +143,10 @@ const UIUtils = {
         `;
         
         list.insertBefore(item, list.firstChild);
+        
+        // حد أقصى 20 إشعار
+        const items = list.querySelectorAll('.notification-item');
+        if (items.length > 20) items[items.length - 1].remove();
         
         const count = list.querySelectorAll('.unread').length;
         const countEl = document.getElementById('notificationCount');
@@ -159,7 +171,7 @@ const UIUtils = {
             headers.join(','),
             ...data.map(row => headers.map(h => {
                 const val = row[h];
-                return typeof val === 'string' && val.includes(',') ? `"${val}"` : val;
+                return typeof val === 'string' && val.includes(',') ? `"${val}"` : (val ?? '');
             }).join(','))
         ].join('\n');
         
