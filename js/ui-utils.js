@@ -3,7 +3,6 @@
 // ============================================
 
 const UIUtils = {
-    // إظهار Toast
     showToast(msg, type = '') {
         const toast = document.getElementById('toast');
         if (!toast) return;
@@ -12,7 +11,6 @@ const UIUtils = {
         setTimeout(() => toast.classList.remove('show'), 3000);
     },
 
-    // تنسيق الوقت
     formatTime(timestamp) {
         if (!timestamp) return 'غير معروف';
         try {
@@ -32,7 +30,6 @@ const UIUtils = {
         } catch { return timestamp; }
     },
 
-    // تنسيق الوقت الكامل
     formatFullTime(timestamp) {
         if (!timestamp) return 'غير معروف';
         try {
@@ -43,20 +40,17 @@ const UIUtils = {
         } catch { return timestamp; }
     },
 
-    // اختصار النص
     truncate(str, length = 20) {
         if (!str) return '';
         return str.length > length ? str.substring(0, length) + '...' : str;
     },
 
-    // أيقونة الجهاز
     getDeviceIcon(deviceType) {
         if (deviceType === 'هاتف محمول') return '📱';
         if (deviceType === 'جهاز لوحي') return '📲';
         return '💻';
     },
 
-    // حالة الموقع
     getLocationBadge(location) {
         if (location && location.lat && location.lng) {
             return '<span class="badge success">📍 محدد</span>';
@@ -64,19 +58,16 @@ const UIUtils = {
         return '<span class="badge warning">⏳ بانتظار</span>';
     },
 
-    // حالة الاتصال
     getOnlineBadge(online) {
         if (online) return '<span class="badge success">🟢 متصل</span>';
         return '<span class="badge error">🔴 غير متصل</span>';
     },
 
-    // فتح Google Maps
     openGoogleMaps(lat, lng, label = '') {
         const url = `https://www.google.com/maps?q=${lat},${lng}&z=17`;
         window.open(url, '_blank');
     },
 
-    // نسخ إلى الحافظة
     async copyToClipboard(text) {
         try {
             await navigator.clipboard.writeText(text);
@@ -88,7 +79,6 @@ const UIUtils = {
         }
     },
 
-    // تبديل المظهر (ليلي/نهاري)
     toggleTheme() {
         document.body.classList.toggle('dark-theme');
         const isDark = document.body.classList.contains('dark-theme');
@@ -100,7 +90,6 @@ const UIUtils = {
         if (toggle) toggle.checked = isDark;
     },
 
-    // تحميل المظهر المحفوظ
     loadTheme() {
         const theme = localStorage.getItem('theme');
         if (theme === 'dark') {
@@ -112,7 +101,6 @@ const UIUtils = {
         }
     },
 
-    // تبديل الشريط الجانبي
     toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
         if (window.innerWidth <= 768) {
@@ -122,7 +110,6 @@ const UIUtils = {
         }
     },
 
-    // تبديل نافذة منبثقة
     openModal(id) {
         document.getElementById(id).classList.add('active');
     },
@@ -131,12 +118,10 @@ const UIUtils = {
         document.getElementById(id).classList.remove('active');
     },
 
-    // تبديل الإشعارات
     toggleNotifications() {
         document.getElementById('notificationsPanel').classList.toggle('active');
     },
 
-    // إضافة إشعار
     addNotification(title, message, type = 'info') {
         const list = document.getElementById('notificationsList');
         if (!list) return;
@@ -151,41 +136,11 @@ const UIUtils = {
         
         list.insertBefore(item, list.firstChild);
         
-        // تحديث العداد
         const count = list.querySelectorAll('.unread').length;
         const countEl = document.getElementById('notificationCount');
         if (countEl) countEl.textContent = count;
-        
-        // صوت الإشعار
-        if (document.getElementById('soundToggle')?.checked) {
-            this.playNotificationSound();
-        }
     },
 
-    // صوت الإشعار
-    playNotificationSound() {
-        try {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.frequency.value = 800;
-            oscillator.type = 'sine';
-            
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.5);
-        } catch (e) {
-            console.log('لا يمكن تشغيل الصوت');
-        }
-    },
-
-    // مسح الإشعارات
     clearNotifications() {
         const list = document.getElementById('notificationsList');
         if (list) list.innerHTML = '<div class="empty-state small"><p>لا توجد إشعارات</p></div>';
@@ -193,7 +148,6 @@ const UIUtils = {
         if (countEl) countEl.textContent = '0';
     },
 
-    // تصدير إلى CSV
     exportToCSV(data, filename) {
         if (!data || data.length === 0) {
             this.showToast('⚠️ لا توجد بيانات للتصدير', 'warning');
@@ -218,7 +172,6 @@ const UIUtils = {
         this.showToast('✅ تم التصدير بنجاح', 'success');
     },
 
-    // تصدير إلى JSON
     exportToJSON(data, filename) {
         if (!data) {
             this.showToast('⚠️ لا توجد بيانات', 'warning');
