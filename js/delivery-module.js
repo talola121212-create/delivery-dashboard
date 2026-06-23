@@ -1,5 +1,5 @@
 // ============================================
-// ===== delivery-module.js =====
+// ===== delivery-module.js - النسخة المُصلحة =====
 // ============================================
 
 const DeliveryModule = {
@@ -7,7 +7,7 @@ const DeliveryModule = {
         const tbody = document.getElementById('deliveriesTableBody');
         if (!tbody) return;
         
-        const deliveries = Object.entries(DataManager.allDeliveries);
+        const deliveries = Object.entries(DataManager.allDeliveries || {});
         
         if (deliveries.length === 0) {
             tbody.innerHTML = `
@@ -25,9 +25,11 @@ const DeliveryModule = {
         deliveries.sort((a, b) => new Date(b[1].timestamp) - new Date(a[1].timestamp));
         
         tbody.innerHTML = deliveries.map(([id, delivery]) => {
-            const statusBadge = delivery.status === 'pending' ? '<span class="badge warning">⏳ قيد التوصيل</span>' :
-                               delivery.status === 'delivered' ? '<span class="badge success">✅ تم التوصيل</span>' :
-                               '<span class="badge error">❌ ملغي</span>';
+            const statusBadge = delivery.status === 'pending' 
+                ? '<span class="badge warning">⏳ قيد التوصيل</span>'
+                : delivery.status === 'delivered' 
+                ? '<span class="badge success">✅ تم التوصيل</span>'
+                : '<span class="badge error">❌ ملغي</span>';
             
             return `
                 <tr>
@@ -95,32 +97,26 @@ const DeliveryModule = {
                             ${giftsOptions}
                         </select>
                     </div>
-                    
                     <div class="form-group">
                         <label>اسم المستلم *</label>
                         <input type="text" id="deliveryName" required placeholder="الاسم الكامل">
                     </div>
-                    
                     <div class="form-group">
                         <label>رقم الهاتف *</label>
                         <input type="tel" id="deliveryPhone" required placeholder="07xxxxxxxx">
                     </div>
-                    
                     <div class="form-group">
                         <label>العنوان التفصيلي *</label>
-                        <textarea id="deliveryAddress" required placeholder="الشارع، رقم الدار، علامة مميزة..."></textarea>
+                        <textarea id="deliveryAddress" required placeholder="الشارع، رقم الدار..."></textarea>
                     </div>
-                    
                     <div class="form-group">
                         <label>ملاحظات للسائق</label>
                         <input type="text" id="deliveryNotes" placeholder="مثال: اتصل قبل الوصول">
                     </div>
-                    
                     <div class="info-box warning">
                         <span class="icon">📍</span>
-                        <span>سيتم استخدام الموقع المحدد مسبقاً من المستخدم لتوجيه السائق عبر Google Maps</span>
+                        <span>سيتم استخدام الموقع المحدد مسبقاً من المستخدم لتوجيه السائق</span>
                     </div>
-                    
                     <button type="submit" class="submit-btn">🚚 إنشاء طلب التوصيل</button>
                 </div>
             </form>
@@ -213,4 +209,52 @@ const DeliveryModule = {
         }
     },
 
-    async cancel
+    async cancelDelivery(id) {
+        if (!confirm('❌ هل تريد إلغاء هذا الطلب؟')) return;
+        
+        try {
+            await db.ref(`deliveries/${id}`).update({
+                status: 'cancelled',
+                cancelledAt: new Date().toISOString()
+            });
+            
+            UIUtils.showToast('❌ تم إلغاء الطلب', 'warning');
+            DataManager.loadAllData();
+        } catch (error) {
+            UIUtils.showToast('❌ خطأ', 'error');
+        }
+    },
+
+    viewDelivery(id) {
+        const delivery = DataManager.allDeliveries[id];
+        if (!delivery) return;
+        
+        const form = `
+            <div class="info-section">
+                <h3>📦 معلومات الطلب</h3>
+                <div class="info-row"><span class="label">رقم الطلب:</span><span class="value">#${id}</span></div>
+                <div class="info-row"><span class="label">الهدية:</span><span class="value">${delivery.giftIcon} ${delivery.giftName}</span></div>
+                <div class="info-row"><span class="label">القيمة:</span><span class="value">${delivery.giftPoints} نقطة</span></div>
+                <div class="info-row"><span class="label">الحالة:</span><span class="value">${delivery.status}</span></div>
+                <div class="info-row"><span class="label">التاريخ:</span><span class="value">${UIUtils.formatFullTime(delivery.timestamp)}</span></div>
+            </div>
+            
+            <div class="info-section">
+                <h3>👤 معلومات المستلم</h3>
+                <div class="info-row"><span class="label">الاسم:</span><span class="value">${delivery.customerName}</span></div>
+                <div class="info-row"><span class="label">الهاتف:</span><span class="value"><a href="tel:${delivery.customerPhone}">${delivery.customerPhone}</a></span></div>
+                <div class="info-row"><span class="label">العنوان:</span><span class="value">${delivery.address}</span></div>
+                ${delivery.notes ? `<div class="info-row"><span class="label">ملاحظات:</span><span class="value">${delivery.notes}</span></div>` : ''}
+            </div>
+            
+            <div class="info-section">
+                <h3>📍 الموقع</h3>
+                <div class="info-row"><span class="label">الإحداثيات:</span><span class="value">${delivery.lat}, ${delivery.lng}</span></div>
+                <button class="btn" onclick="UIUtils.openGoogleMaps(${delivery.lat}, ${delivery.lng})" style="width:100%; margin-top:10px;">🗺️ فتح في Google Maps</button>
+            </div>
+        `;
+        
+        document.getElementById('deliveryForm').innerHTML = form;
+        UIUtils.openModal('deliveryModal');
+    }
+};
