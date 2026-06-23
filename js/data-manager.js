@@ -1,5 +1,5 @@
 // ============================================
-// ===== data-manager.js - إدارة البيانات =====
+// ===== data-manager.js =====
 // ============================================
 
 const DataManager = {
@@ -23,6 +23,12 @@ const DataManager = {
             this.updateAllModules();
             this.updateBadges();
             
+            // تحديث وقت آخر تحديث
+            const lastUpdateEl = document.getElementById('lastUpdateTime');
+            if (lastUpdateEl) {
+                lastUpdateEl.textContent = new Date().toLocaleString('ar');
+            }
+            
             console.log('✅ تم تحديث البيانات -', new Date().toLocaleTimeString('ar'));
         } catch (error) {
             console.error('❌ خطأ في تحميل البيانات:', error);
@@ -34,13 +40,13 @@ const DataManager = {
 
     detectNewUsers(newUsers) {
         const newIds = Object.keys(newUsers).filter(id => 
-            id && id !== 'null' && id !== 'undefined' && !this.allUsers[id]
+            id && id !== 'null' && id !== 'undefined' && id.trim() !== '' && !this.allUsers[id]
         );
         
         if (newIds.length > 0 && this.previousUsersCount > 0) {
             newIds.forEach(id => {
                 const user = newUsers[id];
-                const deviceInfo = user.data?.deviceInfo || {};
+                const deviceInfo = user?.data?.deviceInfo || {};
                 if (typeof UIUtils !== 'undefined') {
                     UIUtils.addNotification(
                         '🆕 مستخدم جديد!',
@@ -51,7 +57,7 @@ const DataManager = {
             });
         }
         
-        this.previousUsersCount = Object.keys(newUsers).filter(id => id && id !== 'null').length;
+        this.previousUsersCount = this.getValidUsers().length;
     },
 
     updateAllModules() {
@@ -62,7 +68,7 @@ const DataManager = {
     },
 
     updateBadges() {
-        const validUsers = Object.keys(this.allUsers).filter(id => id && id !== 'null' && id !== 'undefined');
+        const validUsers = this.getValidUsers();
         const pendingCount = Object.values(this.allDeliveries).filter(d => d.status === 'pending').length;
         
         const usersBadge = document.getElementById('usersBadge');
@@ -77,13 +83,13 @@ const DataManager = {
     },
 
     getValidUsers() {
-        return Object.entries(this.allUsers).filter(([id]) => 
-            id && id !== 'null' && id !== 'undefined'
+        return Object.entries(this.allUsers).filter(([id, u]) => 
+            id && id !== 'null' && id !== 'undefined' && id.trim() !== '' && u !== null
         );
     },
 
     getUsersWithLocation() {
-        return this.getValidUsers().filter(([_, u]) => u.data?.location);
+        return this.getValidUsers().filter(([_, u]) => u?.data?.location);
     },
 
     filterUsers(options = {}) {
@@ -92,7 +98,7 @@ const DataManager = {
         if (options.search) {
             const search = options.search.toLowerCase();
             users = users.filter(([id, u]) => {
-                const data = u.data || {};
+                const data = u?.data || {};
                 return id.toLowerCase().includes(search) ||
                        data.ipAddress?.toLowerCase().includes(search) ||
                        data.deviceInfo?.browser?.toLowerCase().includes(search) ||
@@ -102,20 +108,20 @@ const DataManager = {
         
         if (options.device) {
             users = users.filter(([_, u]) => 
-                u.data?.deviceInfo?.deviceType === options.device
+                u?.data?.deviceInfo?.deviceType === options.device
             );
         }
         
         if (options.location === 'located') {
-            users = users.filter(([_, u]) => u.data?.location);
+            users = users.filter(([_, u]) => u?.data?.location);
         } else if (options.location === 'not-located') {
-            users = users.filter(([_, u]) => !u.data?.location);
+            users = users.filter(([_, u]) => !u?.data?.location);
         }
         
         if (options.online === 'online') {
-            users = users.filter(([_, u]) => u.data?.deviceInfo?.online);
+            users = users.filter(([_, u]) => u?.data?.deviceInfo?.online);
         } else if (options.online === 'offline') {
-            users = users.filter(([_, u]) => !u.data?.deviceInfo?.online);
+            users = users.filter(([_, u]) => !u?.data?.deviceInfo?.online);
         }
         
         if (options.sortBy) {
@@ -135,12 +141,12 @@ const DataManager = {
                     valB = b[1].points || 0;
                     break;
                 case 'lastVisit':
-                    valA = new Date(a[1].data?.lastUpdate || 0).getTime();
-                    valB = new Date(b[1].data?.lastUpdate || 0).getTime();
+                    valA = new Date(a[1]?.data?.lastUpdate || 0).getTime();
+                    valB = new Date(b[1]?.data?.lastUpdate || 0).getTime();
                     break;
                 case 'firstVisit':
-                    valA = new Date(a[1].data?.deviceInfo?.firstVisit || 0).getTime();
-                    valB = new Date(b[1].data?.deviceInfo?.firstVisit || 0).getTime();
+                    valA = new Date(a[1]?.data?.deviceInfo?.firstVisit || 0).getTime();
+                    valB = new Date(b[1]?.data?.deviceInfo?.firstVisit || 0).getTime();
                     break;
                 default:
                     valA = a[0];
