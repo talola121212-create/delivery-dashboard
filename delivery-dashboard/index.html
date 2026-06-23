@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚚 لوحة توزيع الهدايا - Delivery Dashboard Pro</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <!-- Leaflet Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/map.css">
+    <link rel="stylesheet" href="css/modal.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+
+<!-- ===== Sidebar ===== -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="logo">🚚</div>
+        <h2>لوحة التحكم</h2>
+    </div>
+    
+    <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-section="dashboard" onclick="switchSection('dashboard', event)">
+            <span class="nav-icon">📊</span>
+            <span class="nav-text">الرئيسية</span>
+        </a>
+        <a href="#" class="nav-item" data-section="users" onclick="switchSection('users', event)">
+            <span class="nav-icon">👥</span>
+            <span class="nav-text">المستخدمون</span>
+            <span class="nav-badge" id="usersBadge">0</span>
+        </a>
+        <a href="#" class="nav-item" data-section="map" onclick="switchSection('map', event)">
+            <span class="nav-icon">🗺️</span>
+            <span class="nav-text">الخريطة</span>
+        </a>
+        <a href="#" class="nav-item" data-section="deliveries" onclick="switchSection('deliveries', event)">
+            <span class="nav-icon">📦</span>
+            <span class="nav-text">التوصيلات</span>
+            <span class="nav-badge warning" id="deliveriesBadge">0</span>
+        </a>
+        <a href="#" class="nav-item" data-section="analytics" onclick="switchSection('analytics', event)">
+            <span class="nav-icon">📈</span>
+            <span class="nav-text">التحليلات</span>
+        </a>
+        <a href="#" class="nav-item" data-section="settings" onclick="switchSection('settings', event)">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-text">الإعدادات</span>
+        </a>
+    </nav>
+    
+    <div class="sidebar-footer">
+        <div class="connection-status" id="connectionStatus">
+            <div class="status-dot"></div>
+            <span>جاري الاتصال...</span>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()" title="تبديل المظهر">
+            <span id="themeIcon">🌙</span>
+        </button>
+    </div>
+</aside>
+
+<!-- ===== Main Content ===== -->
+<main class="main-content">
+    
+    <!-- ===== Top Bar ===== -->
+    <header class="topbar">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        
+        <div class="search-box">
+            <input type="text" id="globalSearch" placeholder="🔍 بحث في المستخدمين..." oninput="handleGlobalSearch(this.value)">
+        </div>
+        
+        <div class="topbar-actions">
+            <div class="live-indicator">
+                <div class="live-dot"></div>
+                <span>مباشر</span>
+            </div>
+            <button class="icon-btn" onclick="refreshData()" title="تحديث">🔄</button>
+            <button class="icon-btn" onclick="exportData()" title="تصدير">📥</button>
+            <button class="icon-btn notification-btn" onclick="toggleNotifications()" title="الإشعارات">
+                🔔
+                <span class="notification-count" id="notificationCount">0</span>
+            </button>
+        </div>
+    </header>
+    
+    <!-- ===== Dashboard Section ===== -->
+    <section class="section active" id="section-dashboard">
+        <div class="section-header">
+            <h1>📊 لوحة التحكم الرئيسية</h1>
+            <p class="section-subtitle">نظرة شاملة على بيانات المستخدمين والتوصيلات</p>
+        </div>
+        
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card gradient-blue">
+                <div class="stat-icon">👥</div>
+                <div class="stat-info">
+                    <div class="stat-label">إجمالي المستخدمين</div>
+                    <div class="stat-value" id="statTotal">0</div>
+                    <div class="stat-trend" id="statTotalTrend">📈 +0 اليوم</div>
+                </div>
+            </div>
+            
+            <div class="stat-card gradient-green">
+                <div class="stat-icon">📍</div>
+                <div class="stat-info">
+                    <div class="stat-label">محدد موقعهم</div>
+                    <div class="stat-value" id="statLocated">0</div>
+                    <div class="stat-trend">🎯 جاهز للتوصيل</div>
+                </div>
+            </div>
+            
+            <div class="stat-card gradient-orange">
+                <div class="stat-icon">⏳</div>
+                <div class="stat-info">
+                    <div class="stat-label">طلبات معلقة</div>
+                    <div class="stat-value" id="statPending">0</div>
+                    <div class="stat-trend">🚚 قيد التوصيل</div>
+                </div>
+            </div>
+            
+            <div class="stat-card gradient-purple">
+                <div class="stat-icon">✅</div>
+                <div class="stat-info">
+                    <div class="stat-label">تم التوصيل</div>
+                    <div class="stat-value" id="statDelivered">0</div>
+                    <div class="stat-trend">🎉 مكتمل</div>
+                </div>
+            </div>
+            
+            <div class="stat-card gradient-pink">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-info">
+                    <div class="stat-label">إجمالي النقاط</div>
+                    <div class="stat-value" id="statPoints">0</div>
+                    <div class="stat-trend">💎 موزعة</div>
+                </div>
+            </div>
+            
+            <div class="stat-card gradient-indigo">
+                <div class="stat-icon">📱</div>
+                <div class="stat-info">
+                    <div class="stat-label">متصل الآن</div>
+                    <div class="stat-value" id="statOnline">0</div>
+                    <div class="stat-trend">🟢 نشط</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Activity & Quick Actions -->
+        <div class="dashboard-grid">
+            <div class="card">
+                <div class="card-header">
+                    <h3>🎯 إجراءات سريعة</h3>
+                </div>
+                <div class="card-body">
+                    <div class="quick-actions">
+                        <button class="quick-btn" onclick="switchSection('users')">
+                            <span>👥</span>
+                            <span>عرض المستخدمين</span>
+                        </button>
+                        <button class="quick-btn" onclick="switchSection('map')">
+                            <span>🗺️</span>
+                            <span>فتح الخريطة</span>
+                        </button>
+                        <button class="quick-btn" onclick="switchSection('deliveries')">
+                            <span>📦</span>
+                            <span>إدارة التوصيلات</span>
+                        </button>
+                        <button class="quick-btn" onclick="exportData()">
+                            <span>📥</span>
+                            <span>تصدير البيانات</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3>🔔 آخر النشاطات</h3>
+                    <button class="card-action" onclick="clearActivity()">مسح</button>
+                </div>
+                <div class="card-body">
+                    <div class="activity-list" id="activityList">
+                        <div class="empty-state small">
+                            <p>لا توجد نشاطات بعد</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Charts -->
+        <div class="dashboard-grid two-cols">
+            <div class="card">
+                <div class="card-header">
+                    <h3>📱 توزيع الأجهزة</h3>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" id="devicesChart"></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3>🌐 توزيع المتصفحات</h3>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" id="browsersChart"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- ===== Users Section ===== -->
+    <section class="section" id="section-users">
+        <div class="section-header">
+            <h1>👥 إدارة المستخدمين</h1>
+            <p class="section-subtitle">عرض وإدارة جميع المستخدمين المسجلين</p>
+        </div>
+        
+        <!-- Filters -->
+        <div class="card filters-card">
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label>🔍 بحث</label>
+                    <input type="text" id="userSearch" placeholder="ابحث بالاسم، IP، المعرف..." oninput="filterUsers()">
+                </div>
+                <div class="filter-group">
+                    <label>📱 نوع الجهاز</label>
+                    <select id="filterDevice" onchange="filterUsers()">
+                        <option value="">الكل</option>
+                        <option value="هاتف محمول">📱 هاتف محمول</option>
+                        <option value="جهاز لوحي">📲 جهاز لوحي</option>
+                        <option value="كمبيوتر">💻 كمبيوتر</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>📍 الموقع</label>
+                    <select id="filterLocation" onchange="filterUsers()">
+                        <option value="">الكل</option>
+                        <option value="located">📍 محدد الموقع</option>
+                        <option value="not-located">⏳ بدون موقع</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>🔗 الاتصال</label>
+                    <select id="filterOnline" onchange="filterUsers()">
+                        <option value="">الكل</option>
+                        <option value="online">🟢 متصل</option>
+                        <option value="offline">🔴 غير متصل</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>📊 الترتيب</label>
+                    <select id="sortBy" onchange="filterUsers()">
+                        <option value="lastVisit">آخر زيارة</option>
+                        <option value="points">النقاط</option>
+                        <option value="firstVisit">أول زيارة</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Users Table -->
+        <div class="card">
+            <div class="card-header">
+                <h3>📋 قائمة المستخدمين (<span id="usersCount">0</span>)</h3>
+                <div class="card-actions">
+                    <button class="btn btn-sm" onclick="exportUsersCSV()">📥 تصدير CSV</button>
+                    <button class="btn btn-sm" onclick="exportUsersJSON()">📥 تصدير JSON</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-wrapper">
+                    <table class="data-table" id="usersTable">
+                        <thead>
+                            <tr>
+                                <th onclick="sortTable('id')">المعرف ↕</th>
+                                <th onclick="sortTable('device')">الجهاز ↕</th>
+                                <th onclick="sortTable('os')">النظام ↕</th>
+                                <th onclick="sortTable('browser')">المتصفح ↕</th>
+                                <th onclick="sortTable('ip')">IP ↕</th>
+                                <th onclick="sortTable('location')">الموقع ↕</th>
+                                <th onclick="sortTable('points')">النقاط ↕</th>
+                                <th onclick="sortTable('lastVisit')">آخر زيارة ↕</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <tr><td colspan="9" class="loading-state">جاري التحميل...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- ===== Map Section ===== -->
+    <section class="section" id="section-map">
+        <div class="section-header">
+            <h1>🗺️ الخريطة التفاعلية</h1>
+            <p class="section-subtitle">عرض مواقع المستخدمين على الخريطة</p>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h3>📍 مواقع المستخدمين</h3>
+                <div class="card-actions">
+                    <button class="btn btn-sm" onclick="centerMap()">🎯 توسيط</button>
+                    <button class="btn btn-sm" onclick="toggleHeatmap()">🔥 خريطة حرارية</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="deliveryMap" class="map-container"></div>
+                <div class="map-legend">
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background:#10b981;"></div>
+                        <span>مستخدم لديه موقع</span>
+                    </div>
