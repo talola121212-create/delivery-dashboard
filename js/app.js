@@ -1,100 +1,156 @@
 // ============================================
-// ===== app.js - التطبيق الرئيسي =====
+// ===== app.js - التطبيق الرئيسي (النسخة المُصلحة) =====
 // ============================================
 
 const App = {
-    // تهيئة التطبيق
     init() {
         console.log('🚀 جاري تشغيل لوحة توزيع الهدايا...');
         
-        // تحميل البيانات
-        DataManager.loadAllData();
-        
-        // بدء التحديث التلقائي
-        DataManager.startAutoRefresh(5000);
-        
-        console.log('✅ اللوحة جاهزة');
+        try {
+            DataManager.loadAllData();
+            DataManager.startAutoRefresh(5000);
+            console.log('✅ اللوحة جاهزة');
+        } catch (error) {
+            console.error('❌ خطأ في التهيئة:', error);
+        }
     },
 
-    // تبديل القسم
     switchSection(sectionName) {
-        // إخفاء جميع الأقسام
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         
-        // إظهار القسم المحدد
         const section = document.getElementById(`section-${sectionName}`);
         if (section) section.classList.add('active');
         
         const navItem = document.querySelector(`[data-section="${sectionName}"]`);
         if (navItem) navItem.classList.add('active');
         
-        // تحديث الخريطة عند فتحها
         if (sectionName === 'map') {
             setTimeout(() => {
-                MapModule.init();
-                MapModule.render();
-                if (MapModule.map) MapModule.map.invalidateSize();
+                if (typeof MapModule !== 'undefined') {
+                    MapModule.init();
+                    MapModule.render();
+                    if (MapModule.map) MapModule.map.invalidateSize();
+                }
             }, 100);
         }
         
-        // إغلاق الشريط الجانبي على الموبايل
         if (window.innerWidth <= 768) {
             document.getElementById('sidebar').classList.remove('mobile-open');
         }
     }
 };
 
-// دوال عامة للوصول من HTML
-function switchSection(name, event) {
+// ===== تعريف جميع الدوال عالمياً =====
+window.switchSection = function(name, event) {
     if (event) event.preventDefault();
     App.switchSection(name);
-}
+};
 
-function toggleSidebar() {
-    UIUtils.toggleSidebar();
-}
+window.toggleSidebar = function() {
+    if (typeof UIUtils !== 'undefined') {
+        UIUtils.toggleSidebar();
+    }
+};
 
-function toggleTheme() {
-    UIUtils.toggleTheme();
-}
+window.toggleTheme = function() {
+    if (typeof UIUtils !== 'undefined') {
+        UIUtils.toggleTheme();
+    }
+};
 
-function refreshData() {
-    DataManager.loadAllData();
-    UIUtils.showToast('🔄 تم تحديث البيانات', 'success');
-}
+window.refreshData = function() {
+    if (typeof DataManager !== 'undefined') {
+        DataManager.loadAllData();
+        if (typeof UIUtils !== 'undefined') {
+            UIUtils.showToast('🔄 تم تحديث البيانات', 'success');
+        }
+    }
+};
 
-function exportData() {
-    DataManager.exportAllData();
-}
+window.exportData = function() {
+    if (typeof DataManager !== 'undefined') {
+        DataManager.exportAllData();
+    }
+};
 
-function toggleNotifications() {
-    UIUtils.toggleNotifications();
-}
+window.toggleNotifications = function() {
+    if (typeof UIUtils !== 'undefined') {
+        UIUtils.toggleNotifications();
+    }
+};
 
-function clearNotifications() {
-    UIUtils.clearNotifications();
-}
+window.clearNotifications = function() {
+    if (typeof UIUtils !== 'undefined') {
+        UIUtils.clearNotifications();
+    }
+};
 
-function handleGlobalSearch(value) {
-    // البحث العام - ينقل المستخدم لقسم المستخدمين ويفلتر
+window.handleGlobalSearch = function(value) {
     if (value.length > 0) {
         App.switchSection('users');
         const searchInput = document.getElementById('userSearch');
         if (searchInput) {
             searchInput.value = value;
-            UsersModule.filter();
+            if (typeof UsersModule !== 'undefined') {
+                UsersModule.filter();
+            }
         }
     }
-}
+};
 
-function changeRefreshInterval(interval) {
-    DataManager.changeRefreshInterval(interval);
-}
+window.changeRefreshInterval = function(interval) {
+    if (typeof DataManager !== 'undefined') {
+        DataManager.changeRefreshInterval(interval);
+    }
+};
 
-function clearLocalData() {
-    DataManager.clearLocalData();
-}
+window.clearLocalData = function() {
+    if (typeof DataManager !== 'undefined') {
+        DataManager.clearLocalData();
+    }
+};
+
+window.closeModal = function(id) {
+    if (typeof UIUtils !== 'undefined') {
+        UIUtils.closeModal(id);
+    }
+};
+
+window.filterUsers = function() {
+    if (typeof UsersModule !== 'undefined') {
+        UsersModule.filter();
+    }
+};
+
+window.sortTable = function(col) {
+    if (typeof UsersModule !== 'undefined') {
+        UsersModule.sortTable(col);
+    }
+};
+
+window.exportUsersCSV = function() {
+    if (typeof UsersModule !== 'undefined') {
+        UsersModule.exportCSV();
+    }
+};
+
+window.exportUsersJSON = function() {
+    if (typeof UsersModule !== 'undefined') {
+        UsersModule.exportJSON();
+    }
+};
+
+window.openNewDeliveryModal = function() {
+    if (typeof DeliveryModule !== 'undefined') {
+        DeliveryModule.openNewForm();
+    }
+};
+
+window.clearActivity = function() {
+    const list = document.getElementById('activityList');
+    if (list) list.innerHTML = '<div class="empty-state small"><p>تم المسح</p></div>';
+};
 
 // ===== بدء التشغيل =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -103,7 +159,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // إغلاق النوافذ المنبثقة عند النقر خارجها
 document.addEventListener('click', (e) => {
-    // إغلاق الإشعارات
     const notifPanel = document.getElementById('notificationsPanel');
     const notifBtn = document.querySelector('.notification-btn');
     if (notifPanel?.classList.contains('active') && 
