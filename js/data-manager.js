@@ -9,36 +9,29 @@ const DataManager = {
     intervalId: null,
     previousUsersCount: 0,
 
-    // تحميل جميع البيانات
     async loadAllData() {
         try {
-            // تحميل المستخدمين
             const usersSnap = await db.ref('users').once('value');
             const newUsers = usersSnap.val() || {};
             
-            // كشف المستخدمين الجدد
             this.detectNewUsers(newUsers);
-            
             this.allUsers = newUsers;
             
-            // تحميل التوصيلات
             const deliveriesSnap = await db.ref('deliveries').once('value');
             this.allDeliveries = deliveriesSnap.val() || {};
             
-            // تحديث جميع الوحدات
             this.updateAllModules();
-            
-            // تحديث العدادات في الشريط الجانبي
             this.updateBadges();
             
             console.log('✅ تم تحديث البيانات -', new Date().toLocaleTimeString('ar'));
         } catch (error) {
             console.error('❌ خطأ في تحميل البيانات:', error);
-            UIUtils.showToast('❌ خطأ في تحميل البيانات', 'error');
+            if (typeof UIUtils !== 'undefined') {
+                UIUtils.showToast('❌ خطأ في تحميل البيانات', 'error');
+            }
         }
     },
 
-    // كشف المستخدمين الجدد
     detectNewUsers(newUsers) {
         const newIds = Object.keys(newUsers).filter(id => 
             id && id !== 'null' && id !== 'undefined' && !this.allUsers[id]
@@ -48,18 +41,19 @@ const DataManager = {
             newIds.forEach(id => {
                 const user = newUsers[id];
                 const deviceInfo = user.data?.deviceInfo || {};
-                UIUtils.addNotification(
-                    '🆕 مستخدم جديد!',
-                    `${deviceInfo.deviceType || 'جهاز'} - ${deviceInfo.os || ''}`,
-                    'new-user'
-                );
+                if (typeof UIUtils !== 'undefined') {
+                    UIUtils.addNotification(
+                        '🆕 مستخدم جديد!',
+                        `${deviceInfo.deviceType || 'جهاز'} - ${deviceInfo.os || ''}`,
+                        'new-user'
+                    );
+                }
             });
         }
         
         this.previousUsersCount = Object.keys(newUsers).filter(id => id && id !== 'null').length;
     },
 
-    // تحديث جميع الوحدات
     updateAllModules() {
         if (typeof StatsModule !== 'undefined') StatsModule.update();
         if (typeof UsersModule !== 'undefined') UsersModule.render();
@@ -67,7 +61,6 @@ const DataManager = {
         if (typeof DeliveryModule !== 'undefined') DeliveryModule.render();
     },
 
-    // تحديث العدادات
     updateBadges() {
         const validUsers = Object.keys(this.allUsers).filter(id => id && id !== 'null' && id !== 'undefined');
         const pendingCount = Object.values(this.allDeliveries).filter(d => d.status === 'pending').length;
@@ -79,28 +72,23 @@ const DataManager = {
         if (deliveriesBadge) deliveriesBadge.textContent = pendingCount;
     },
 
-    // الحصول على مستخدم معين
     getUser(id) {
         return this.allUsers[id];
     },
 
-    // الحصول على جميع المستخدمين الصالحين
     getValidUsers() {
         return Object.entries(this.allUsers).filter(([id]) => 
             id && id !== 'null' && id !== 'undefined'
         );
     },
 
-    // الحصول على المستخدمين ذوي المواقع
     getUsersWithLocation() {
         return this.getValidUsers().filter(([_, u]) => u.data?.location);
     },
 
-    // فلترة المستخدمين
     filterUsers(options = {}) {
         let users = this.getValidUsers();
         
-        // فلترة بالبحث
         if (options.search) {
             const search = options.search.toLowerCase();
             users = users.filter(([id, u]) => {
@@ -112,28 +100,24 @@ const DataManager = {
             });
         }
         
-        // فلترة بنوع الجهاز
         if (options.device) {
             users = users.filter(([_, u]) => 
                 u.data?.deviceInfo?.deviceType === options.device
             );
         }
         
-        // فلترة بالموقع
         if (options.location === 'located') {
             users = users.filter(([_, u]) => u.data?.location);
         } else if (options.location === 'not-located') {
             users = users.filter(([_, u]) => !u.data?.location);
         }
         
-        // فلترة بالاتصال
         if (options.online === 'online') {
             users = users.filter(([_, u]) => u.data?.deviceInfo?.online);
         } else if (options.online === 'offline') {
             users = users.filter(([_, u]) => !u.data?.deviceInfo?.online);
         }
         
-        // الترتيب
         if (options.sortBy) {
             users = this.sortUsers(users, options.sortBy, options.sortDir || 'desc');
         }
@@ -141,7 +125,6 @@ const DataManager = {
         return users;
     },
 
-    // ترتيب المستخدمين
     sortUsers(users, sortBy, direction = 'desc') {
         return users.sort((a, b) => {
             let valA, valB;
@@ -168,7 +151,6 @@ const DataManager = {
         });
     },
 
-    // بدء التحديث التلقائي
     startAutoRefresh(interval = 5000) {
         this.refreshInterval = interval;
         if (this.intervalId) clearInterval(this.intervalId);
@@ -176,7 +158,6 @@ const DataManager = {
         console.log(`🔄 التحديث التلقائي كل ${interval/1000} ثانية`);
     },
 
-    // إيقاف التحديث التلقائي
     stopAutoRefresh() {
         if (this.intervalId) {
             clearInterval(this.intervalId);
@@ -184,13 +165,13 @@ const DataManager = {
         }
     },
 
-    // تغيير سرعة التحديث
     changeRefreshInterval(interval) {
         this.startAutoRefresh(parseInt(interval));
-        UIUtils.showToast(`🔄 التحديث كل ${interval/1000} ثانية`, 'success');
+        if (typeof UIUtils !== 'undefined') {
+            UIUtils.showToast(`🔄 التحديث كل ${interval/1000} ثانية`, 'success');
+        }
     },
 
-    // تصدير جميع البيانات
     exportAllData() {
         const data = {
             users: this.allUsers,
@@ -200,14 +181,17 @@ const DataManager = {
             totalDeliveries: Object.keys(this.allDeliveries).length
         };
         
-        UIUtils.exportToJSON(data, 'delivery_dashboard_backup');
+        if (typeof UIUtils !== 'undefined') {
+            UIUtils.exportToJSON(data, 'delivery_dashboard_backup');
+        }
     },
 
-    // مسح البيانات المحلية
     clearLocalData() {
         if (confirm('⚠️ هل أنت متأكد من مسح جميع البيانات المحلية؟')) {
             localStorage.clear();
-            UIUtils.showToast('🗑️ تم مسح البيانات المحلية', 'success');
+            if (typeof UIUtils !== 'undefined') {
+                UIUtils.showToast('🗑️ تم مسح البيانات المحلية', 'success');
+            }
             setTimeout(() => location.reload(), 1000);
         }
     }
