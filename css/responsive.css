@@ -1,0 +1,248 @@
+/* ============================================
+   responsive.css - التجاوب مع الشاشات
+   ============================================ */
+
+/* Tablet */
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 70px;
+    }
+    
+    .sidebar .nav-text,
+    .sidebar .sidebar-header h2,
+    .sidebar .nav-badge,
+    .sidebar .sidebar-footer .connection-status span {
+        display: none;
+    }
+    
+    .main-content {
+        margin-right: 70px;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+    
+    .stat-value {
+        font-size: 26px;
+    }
+    
+    .stat-icon {
+        font-size: 38px;
+        width: 65px;
+        height: 65px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(100%);
+        width: 260px;
+    }
+    
+    .sidebar.mobile-open {
+        transform: translateX(0);
+    }
+    
+    .sidebar.mobile-open .nav-text,
+    .sidebar.mobile-open .sidebar-header h2,
+    .sidebar.mobile-open .nav-badge,
+    .sidebar.mobile-open .sidebar-footer .connection-status span {
+        display: block;
+    }
+    
+    .main-content {
+        margin-right: 0;
+    }
+    
+    .menu-toggle {
+        display: block;
+    }
+    
+    .topbar {
+        padding: 12px 15px;
+    }
+    
+    .search-box {
+        display: none;
+    }
+    
+    .section {
+        padding: 15px;
+    }
+    
+    .section-header h1 {
+        font-size: 22px;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+    
+    .stat-card {
+        padding: 15px;
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+    
+    .stat-value {
+        font-size: 24px;
+    }
+    
+    .stat-icon {
+        font-size: 32px;
+        width: 60px;
+        height: 60px;
+    }
+    
+    .dashboard-grid,
+    .dashboard-grid.two-cols {
+        grid-template-columns: 1fr;
+    }
+    
+    .filters-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .data-table {
+        font-size: 11px;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 8px 5px;
+    }
+    
+    .map-container {
+        height: 400px;
+    }
+    
+    .modal {
+        max-width: 95%;
+        margin: 10px;
+    }
+    
+    .modal-body {
+        padding: 15px;
+    }
+    
+    .notifications-panel {
+        width: calc(100% - 40px);
+        left: 20px;
+        right: 20px;
+    }
+    
+    .quick-actions {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .chart-bar-label {
+        min-width: 70px;
+        font-size: 11px;
+    }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .section-header h1 {
+        font-size: 20px;
+    }
+    
+    .topbar-actions {
+        gap: 5px;
+    }
+    
+    .icon-btn {
+        width: 35px;
+        height: 35px;
+        font-size: 16px;
+    }
+    
+    .live-indicator {
+        display: none;
+    }
+    
+    .quick-actions {
+        grid-template-columns: 1fr;
+    }
+    
+    .info-row {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .info-row .value {
+        text-align: right;
+    }
+}
+
+/* Print */
+@media print {
+    .sidebar,
+    .topbar,
+    .notifications-panel,
+    .modal-overlay {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin: 0;
+    }
+    
+    .card {
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+}
+
+/* Dark Theme Specific */
+body.dark-theme .stat-card {
+    background: var(--bg-secondary);
+}
+
+body.dark-theme .stat-icon {
+    background: var(--bg-tertiary);
+}
+
+body.dark-theme .data-table tr:hover {
+    background: var(--bg-tertiary);
+}
+
+body.dark-theme .info-box.info {
+    background: #1e3a8a33;
+    color: #93c5fd;
+}
+
+body.dark-theme .info-box.warning {
+    background: #92400e33;
+    color: #fcd34d;
+}
+
+body.dark-theme .info-box.success {
+    background: #065f4633;
+    color: #6ee7b7;
+}
+
+/* Hover Effects for Touch Devices */
+@media (hover: none) {
+    .stat-card:hover,
+    .quick-btn:hover,
+    .btn:hover {
+        transform: none;
+    }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
