@@ -1,9 +1,8 @@
 // ============================================
-// ===== delivery-module.js - وحدة التوصيل =====
+// ===== delivery-module.js =====
 // ============================================
 
 const DeliveryModule = {
-    // عرض طلبات التوصيل
     render() {
         const tbody = document.getElementById('deliveriesTableBody');
         if (!tbody) return;
@@ -23,7 +22,6 @@ const DeliveryModule = {
             return;
         }
         
-        // ترتيب حسب التاريخ
         deliveries.sort((a, b) => new Date(b[1].timestamp) - new Date(a[1].timestamp));
         
         tbody.innerHTML = deliveries.map(([id, delivery]) => {
@@ -56,7 +54,6 @@ const DeliveryModule = {
         }).join('');
     },
 
-    // فتح نموذج طلب جديد
     openForm(userId) {
         const user = DataManager.getUser(userId);
         if (!user) return;
@@ -133,7 +130,6 @@ const DeliveryModule = {
         UIUtils.openModal('deliveryModal');
     },
 
-    // فتح نموذج من زر "طلب جديد"
     openNewForm() {
         const usersWithLocation = DataManager.getUsersWithLocation();
         if (usersWithLocation.length === 0) {
@@ -160,7 +156,6 @@ const DeliveryModule = {
         UIUtils.openModal('deliveryModal');
     },
 
-    // إرسال الطلب
     async submit(event, userId) {
         event.preventDefault();
         
@@ -200,7 +195,6 @@ const DeliveryModule = {
         }
     },
 
-    // تسجيل التسليم
     async markDelivered(id) {
         if (!confirm('✅ هل تم تسليم الهدية فعلياً؟')) return;
         
@@ -219,57 +213,4 @@ const DeliveryModule = {
         }
     },
 
-    // إلغاء الطلب
-    async cancelDelivery(id) {
-        if (!confirm('❌ هل تريد إلغاء هذا الطلب؟')) return;
-        
-        try {
-            await db.ref(`deliveries/${id}`).update({
-                status: 'cancelled',
-                cancelledAt: new Date().toISOString()
-            });
-            
-            UIUtils.showToast('❌ تم إلغاء الطلب', 'warning');
-            DataManager.loadAllData();
-        } catch (error) {
-            UIUtils.showToast('❌ خطأ', 'error');
-        }
-    },
-
-    // عرض تفاصيل الطلب
-    viewDelivery(id) {
-        const delivery = DataManager.allDeliveries[id];
-        if (!delivery) return;
-        
-        const form = `
-            <div class="info-section">
-                <h3>📦 معلومات الطلب</h3>
-                <div class="info-row"><span class="label">رقم الطلب:</span><span class="value">#${id}</span></div>
-                <div class="info-row"><span class="label">الهدية:</span><span class="value">${delivery.giftIcon} ${delivery.giftName}</span></div>
-                <div class="info-row"><span class="label">القيمة:</span><span class="value">${delivery.giftPoints} نقطة</span></div>
-                <div class="info-row"><span class="label">الحالة:</span><span class="value">${delivery.status}</span></div>
-                <div class="info-row"><span class="label">التاريخ:</span><span class="value">${UIUtils.formatFullTime(delivery.timestamp)}</span></div>
-            </div>
-            
-            <div class="info-section">
-                <h3>👤 معلومات المستلم</h3>
-                <div class="info-row"><span class="label">الاسم:</span><span class="value">${delivery.customerName}</span></div>
-                <div class="info-row"><span class="label">الهاتف:</span><span class="value"><a href="tel:${delivery.customerPhone}">${delivery.customerPhone}</a></span></div>
-                <div class="info-row"><span class="label">العنوان:</span><span class="value">${delivery.address}</span></div>
-                ${delivery.notes ? `<div class="info-row"><span class="label">ملاحظات:</span><span class="value">${delivery.notes}</span></div>` : ''}
-            </div>
-            
-            <div class="info-section">
-                <h3>📍 الموقع</h3>
-                <div class="info-row"><span class="label">الإحداثيات:</span><span class="value">${delivery.lat}, ${delivery.lng}</span></div>
-                <button class="btn" onclick="UIUtils.openGoogleMaps(${delivery.lat}, ${delivery.lng})" style="width:100%; margin-top:10px;">🗺️ فتح في Google Maps</button>
-            </div>
-        `;
-        
-        document.getElementById('deliveryForm').innerHTML = form;
-        UIUtils.openModal('deliveryModal');
-    }
-};
-
-// دوال عامة
-function openNewDeliveryModal() { DeliveryModule.openNewForm(); }
+    async cancel
