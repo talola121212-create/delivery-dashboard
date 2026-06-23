@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚚 لوحة توزيع الهدايا - Delivery Dashboard</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <!-- Leaflet للخريطة (مجاني بدون API Key) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
+        body { background: #f0f4f8; color: #1f2937; min-height: 100vh; }
+        
+        /* ===== Header ===== */
+        header {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            color: white; padding: 20px; text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: sticky; top: 0; z-index: 100;
+        }
+        header h1 { font-size: 26px; margin-bottom: 5px; }
+        header p { font-size: 13px; opacity: 0.9; }
+        .live-indicator {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(255,255,255,0.2); padding: 5px 12px;
+            border-radius: 20px; font-size: 12px; margin-top: 10px;
+        }
+        .live-dot {
+            width: 8px; height: 8px; background: #10b981;
+            border-radius: 50%; animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.3); }
+        }
+        
+        /* ===== Container ===== */
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        
+        /* ===== Stats Grid ===== */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px; margin-bottom: 25px;
+        }
+        .stat-card {
+            background: white; padding: 20px; border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); transition: all 0.3s;
+            border-right: 5px solid;
+        }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.12); }
+        .stat-card.total { border-color: #3b82f6; }
+        .stat-card.located { border-color: #10b981; }
+        .stat-card.pending { border-color: #f59e0b; }
+        .stat-card.delivered { border-color: #8b5cf6; }
+        .stat-card .icon { font-size: 35px; margin-bottom: 8px; }
+        .stat-card .label { color: #6b7280; font-size: 13px; margin-bottom: 5px; }
+        .stat-card .value { color: #1f2937; font-size: 32px; font-weight: bold; }
+        
+        /* ===== Tabs ===== */
+        .tabs {
+            display: flex; gap: 10px; margin-bottom: 20px;
+            background: white; padding: 10px; border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); flex-wrap: wrap;
+        }
+        .tab-btn {
+            flex: 1; min-width: 150px; padding: 12px 20px;
+            background: transparent; border: none; border-radius: 8px;
+            cursor: pointer; font-weight: 600; color: #6b7280;
+            transition: all 0.3s; font-size: 14px;
+        }
+        .tab-btn:hover { background: #f3f4f6; }
+        .tab-btn.active { background: #dc2626; color: white; }
+        
+        /* ===== Content Panels ===== */
+        .panel { display: none; }
+        .panel.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .panel-card {
+            background: white; border-radius: 15px; padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px;
+        }
+        .panel-card h2 {
+            color: #1f2937; margin-bottom: 15px; font-size: 20px;
+            padding-bottom: 10px; border-bottom: 2px solid #f3f4f6;
+        }
+        
+        /* ===== Users Table ===== */
+        .users-table { width: 100%; border-collapse: collapse; }
+        .users-table th {
+            background: #f9fafb; padding: 12px; text-align: right;
+            font-weight: 600; color: #374151; font-size: 13px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .users-table td {
+            padding: 12px; border-bottom: 1px solid #f3f4f6;
+            font-size: 13px; vertical-align: middle;
+        }
+        .users-table tr:hover { background: #f9fafb; }
+        
+        .badge {
+            display: inline-block; padding: 4px 10px; border-radius: 12px;
+            font-size: 11px; font-weight: 600;
+        }
+        .badge.success { background: #d1fae5; color: #065f46; }
+        .badge.warning { background: #fef3c7; color: #92400e; }
+        .badge.error { background: #fee2e2; color: #991b1b; }
+        .badge.info { background: #dbeafe; color: #1e40af; }
+        .badge.purple { background: #ede9fe; color: #5b21b6; }
+        
+        .device-icon { font-size: 20px; margin-left: 5px; }
+        
+        /* ===== Action Buttons ===== */
+        .action-btn {
+            padding: 6px 12px; border: none; border-radius: 6px;
+            cursor: pointer; font-size: 12px; margin: 2px;
+            font-weight: 600; transition: all 0.2s;
+        }
+        .action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+        .btn-view { background: #3b82f6; color: white; }
+        .btn-map { background: #10b981; color: white; }
+        .btn-delivery { background: #f59e0b; color: white; }
+        .btn-google { background: #dc2626; color: white; }
+        
+        /* ===== Map ===== */
+        #deliveryMap {
+            height: 600px; border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .map-legend {
+            display: flex; gap: 15px; margin-top: 15px;
+            flex-wrap: wrap; justify-content: center;
+        }
+        .legend-item {
+            display: flex; align-items: center; gap: 8px;
+            background: white; padding: 8px 15px; border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 13px;
+        }
+        .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+        
+        /* ===== Modal ===== */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6); display: none;
+            align-items: center; justify-content: center;
+            z-index: 1000; padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white; border-radius: 20px; max-width: 700px;
+            width: 100%; max-height: 90vh; overflow-y: auto;
+            padding: 25px; animation: slideUp 0.3s;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #f3f4f6;
+        }
+        .modal-header h2 { color: #1f2937; font-size: 22px; }
+        .close-btn {
+            background: #f3f4f6; border: none; width: 35px; height: 35px;
+            border-radius: 50%; cursor: pointer; font-size: 18px;
+        }
+        
+        .info-section { margin-bottom: 20px; }
+        .info-section h3 {
+            color: #374151; margin-bottom: 10px; font-size: 16px;
+            padding-bottom: 8px; border-bottom: 1px solid #f3f4f6;
+        }
+        .info-row {
+            display: flex; justify-content: space-between;
+            padding: 10px; background: #f9fafb; border-radius: 8px;
+            margin-bottom: 8px; flex-wrap: wrap; gap: 10px;
+        }
+        .info-row .label { color: #6b7280; font-weight: 600; font-size: 13px; }
+        .info-row .value { color: #1f2937; font-size: 13px; word-break: break-all; }
+        
+        /* ===== Delivery Form ===== */
+        .delivery-form {
+            background: #fef3c7; padding: 20px; border-radius: 12px;
+            border: 2px solid #f59e0b; margin-top: 15px;
+        }
+        .delivery-form h3 { color: #92400e; margin-bottom: 15px; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label {
+            display: block; margin-bottom: 5px;
+            font-weight: 600; font-size: 13px; color: #374151;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 10px; border: 2px solid #e5e7eb;
+            border-radius: 8px; font-size: 14px; font-family: inherit;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none; border-color: #f59e0b;
+        }
+        .form-group textarea { resize: vertical; min-height: 70px; }
+        
+        .submit-btn {
+            width: 100%; padding: 12px;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white; border: none; border-radius: 10px;
+            font-size: 15px; font-weight: bold; cursor: pointer;
+            margin-top: 10px; transition: all 0.3s;
+        }
+        .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3); }
+        
+        /* ===== Toast ===== */
+        .toast {
+            position: fixed; top: 100px; left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: #1f2937; color: white; padding: 12px 25px;
+            border-radius: 25px; font-size: 14px;
+            transition: transform 0.3s; z-index: 2000;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.success { background: #10b981; }
+        .toast.error { background: #ef4444; }
+        
+        /* ===== Empty State ===== */
+        .empty-state {
+            text-align: center; padding: 50px 20px; color: #9ca3af;
+        }
+        .empty-state .icon { font-size: 70px; margin-bottom: 15px; }
+        .empty-state h3 { color: #6b7280; margin-bottom: 10px; }
+        
+        /* ===== Responsive ===== */
+        @media (max-width: 768px) {
+            header h1 { font-size: 20px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .stat-card .value { font-size: 24px; }
+            .users-table { font-size: 11px; }
+            .users-table th, .users-table td { padding: 8px 5px; }
+            #deliveryMap { height: 400px; }
+            .tab-btn { min-width: 100px; font-size: 12px; padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🚚 لوحة توزيع الهدايا</h1>
+    <p>نظام إدارة توصيل الهدايا للمستخدمين</p>
+    <div class="live-indicator">
+        <div class="live-dot"></div>
+        <span>مباشر - تحديث كل 3 ثواني</span>
+    </div>
+</header>
+
+<div class="container">
+    <!-- ===== Statistics ===== -->
+    <div class="stats-grid">
+        <div class="stat-card total">
+            <div class="icon">👥</div>
+            <div class="label">إجمالي المستخدمين</div>
+            <div class="value" id="statTotal">0</div>
+        </div>
+        <div class="stat-card located">
+            <div class="icon">📍</div>
+            <div class="label">محدد موقعهم</div>
+            <div class="value" id="statLocated">0</div>
+        </div>
+        <div class="stat-card pending">
+            <div class="icon">⏳</div>
+            <div class="label">بانتظار التوصيل</div>
+            <div class="value" id="statPending">0</div>
+        </div>
+        <div class="stat-card delivered">
+            <div class="icon">✅</div>
+            <div class="label">تم التوصيل</div>
+            <div class="value" id="statDelivered">0</div>
+        </div>
+    </div>
+
+    <!-- ===== Tabs ===== -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showPanel('users', event)">👥 المستخدمون</button>
+        <button class="tab-btn" onclick="showPanel('map', event)">🗺️ الخريطة</button>
+        <button class="tab-btn" onclick="showPanel('deliveries', event)">📦 طلبات التوصيل</button>
+    </div>
+
+    <!-- ===== Panel: Users ===== -->
+    <div class="panel active" id="panel-users">
+        <div class="panel-card">
+            <h2>👥 قائمة المستخدمين</h2>
+            <div style="overflow-x: auto;">
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>المعرف</th>
+                            <th>الجهاز</th>
+                            <th>النظام</th>
+                            <th>المتصفح</th>
+                            <th>IP</th>
+                            <th>الموقع</th>
+                            <th>النقاط</th>
+                            <th>آخر زيارة</th>
+                            <th>إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr><td colspan="9" class="empty-state">جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Panel: Map ===== -->
+    <div class="panel" id="panel-map">
+        <div class="panel-card">
+            <h2>🗺️ خريطة مواقع المستخدمين</h2>
+            <div id="deliveryMap"></div>
+            <div class="map-legend">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:#10b981;"></div>
+                    <span>مستخدم لديه موقع</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:#f59e0b;"></div>
+                    <span>بانتظار التوصيل</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:#8b5cf6;"></div>
+                    <span>تم التوصيل</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Panel: Deliveries ===== -->
+    <div class="panel" id="panel-deliveries">
+        <div class="panel-card">
+            <h2>📦 طلبات التوصيل</h2>
+            <div style="overflow-x: auto;">
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>رقم الطلب</th>
+                            <th>المستخدم</th>
+                            <th>الهدية</th>
+                            <th>العنوان</th>
+                            <th>الحالة</th>
+                            <th>التاريخ</th>
+                            <th>إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deliveriesTableBody">
+                        <tr><td colspan="7" class="empty-state">لا توجد طلبات توصيل بعد</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== User Details Modal ===== -->
+<div class="modal-overlay" id="userModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>👤 تفاصيل المستخدم</h2>
+            <button class="close-btn" onclick="closeModal('userModal')">✕</button>
+        </div>
+        <div id="userDetails"></div>
+    </div>
+</div>
+
+<!-- ===== Delivery Modal ===== -->
+<div class="modal-overlay" id="deliveryModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>🚚 إنشاء طلب توصيل</h2>
+            <button class="close-btn" onclick="closeModal('deliveryModal')">✕</button>
+        </div>
+        <div id="deliveryForm"></div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================
+// ===== إعدادات Firebase =====
+// ============================================
+const firebaseConfig = {
+    apiKey: "AIzaSyD8jLXCopW1Klgm97FdHrY7VzpcrFE2s9s",
+    authDomain: "switgame-a4227.firebaseapp.com",
+    databaseURL: "https://switgame-a4227-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "switgame-a4227",
+    storageBucket: "switgame-a4227.firebasestorage.app",
+    messagingSenderId: "871810794908",
+    appId: "1:871810794908:web:a55a81099041c74b1fb459"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ============================================
+// ===== المتغيرات العامة =====
+// ============================================
+let allUsers = {};
+let allDeliveries = {};
+let map = null;
+let markers = {};
+
+// قائمة الهدايا المتاحة
+const GIFTS = [
+    { id: 1, name: 'شاحن هاتف', icon: '🔌', points: 100 },
+    { id: 2, name: 'سماعات بلوتوث', icon: '🎧', points: 200 },
+    { id: 3, name: 'ساعة ذكية', icon: '⌚', points: 500 },
+    { id: 4, name: 'جهاز لوحي', icon: '📱', points: 1000 },
+    { id: 5, name: 'لابتوب', icon: '💻', points: 2000 },
+    { id: 6, name: 'PlayStation 5', icon: '🎮', points: 3000 }
+];
+
+// ============================================
+// ===== تحميل البيانات من Firebase =====
+// ============================================
+async function loadData() {
+    try {
+        const usersSnap = await db.ref('users').once('value');
+        allUsers = usersSnap.val() || {};
+        
+        const deliveriesSnap = await db.ref('deliveries').once('value');
+        allDeliveries = deliveriesSnap.val() || {};
+        
+        updateStats();
+        renderUsers();
+        renderDeliveries();
+        renderMap();
+        
+        console.log('✅ تم تحديث البيانات -', new Date().toLocaleTimeString('ar'));
+    } catch (error) {
+        console.error('❌ خطأ:', error);
+        showToast('❌ خطأ في تحميل البيانات', 'error');
+    }
+}
+
+// ============================================
+// ===== تحديث الإحصائيات =====
+// ============================================
+function updateStats() {
+    const users = Object.entries(allUsers).filter(([id]) => id && id !== 'null');
+    const locatedCount = users.filter(([_, u]) => u.data?.location).length;
+    const deliveries = Object.values(allDeliveries);
+    const pendingCount = deliveries.filter(d => d.status === 'pending').length;
+    const deliveredCount = deliveries.filter(d => d.status === 'delivered').length;
+    
+    document.getElementById('statTotal').textContent = users.length;
+    document.getElementById('statLocated').textContent = locatedCount;
+    document.getElementById('statPending').textContent = pendingCount;
+    document.getElementById('statDelivered').textContent = deliveredCount;
+}
+
+// ============================================
+// ===== عرض المستخدمين =====
+// ============================================
+function renderUsers() {
+    const tbody = document.getElementById('usersTableBody');
+    const users = Object.entries(allUsers).filter(([id]) => id && id !== 'null');
+    
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><div class="icon">📭</div><h3>لا يوجد مستخدمون بعد</h3></td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = users.map(([id, user]) => {
+        const data = user.data || {};
+        const deviceInfo = data.deviceInfo || {};
+        const location = data.location;
+        const points = user.points || 0;
+        const lastVisit = data.lastUpdate ? formatTime(data.lastUpdate) : 'غير معروف';
+        const deviceIcon = deviceInfo.deviceType === 'هاتف محمول' ? '📱' : 
+                          deviceInfo.deviceType === 'جهاز لوحي' ? '📲' : '💻';
+        
+        return `
+            <tr>
+                <td><small style="color:#6b7280;">${id.substring(0, 20)}...</small></td>
+                <td><span class="device-icon">${deviceIcon}</span>${deviceInfo.deviceType || 'غير معروف'}</td>
+                <td>${deviceInfo.os || 'غير معروف'}</td>
+                <td>${deviceInfo.browser || 'غير معروف'}</td>
+                <td><code style="background:#f3f4f6; padding:2px 6px; border-radius:4px;">${data.ipAddress || 'غير معروف'}</code></td>
+                <td>${location ? 
+                    `<span class="badge success">📍 محدد</span>` : 
+                    `<span class="badge warning">⏳ بانتظار الموافقة</span>`}
+                </td>
+                <td><strong style="color:#d97706;">⭐ ${points}</strong></td>
+                <td><small>${lastVisit}</small></td>
+                <td>
+                    <button class="action-btn btn-view" onclick="viewUser('${id}')">👁️</button>
+                    ${location ? `<button class="action-btn btn-google" onclick="openGoogleMaps(${location.lat}, ${location.lng})">🗺️</button>` : ''}
+                    <button class="action-btn btn-delivery" onclick="openDeliveryForm('${id}')">🚚</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// ============================================
+// ===== عرض طلبات التوصيل =====
+// ============================================
+function renderDeliveries() {
+    const tbody = document.getElementById('deliveriesTableBody');
+    const deliveries = Object.entries(allDeliveries);
+    
+    if (deliveries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📦</div><h3>لا توجد طلبات توصيل بعد</h3><p>أنشئ طلب توصيل من قائمة المستخدمين</p></td></tr>';
+        return;
+    }
+    
+    // ترتيب حسب التاريخ (الأحدث أولاً)
+    deliveries.sort((a, b) => new Date(b[1].timestamp) - new Date(a[1].timestamp));
+    
+    tbody.innerHTML = deliveries.map(([id, delivery]) => {
+        const statusBadge = delivery.status === 'pending' ? '<span class="badge warning">⏳ قيد التوصيل</span>' :
+                           delivery.status === 'delivered' ? '<span class="badge success">✅ تم التوصيل</span>' :
+                           '<span class="badge error">❌ ملغي</span>';
+        
+        return `
+            <tr>
+                <td><small>#${id.substring(0, 8)}</small></td>
+                <td>${delivery.customerName || 'غير معروف'}</td>
+                <td>${delivery.giftIcon || ''} ${delivery.giftName || 'غير معروف'}</td>
+                <td><small>${delivery.address || 'غير محدد'}</small></td>
+                <td>${statusBadge}</td>
+                <td><small>${formatTime(delivery.timestamp)}</small></td>
+                <td>
+                    ${delivery.status === 'pending' ? `
+                        <button class="action-btn btn-map" onclick="markDelivered('${id}')">✅ تسليم</button>
+                        <button class="action-btn btn-google" onclick="openGoogleMaps(${delivery.lat}, ${delivery.lng})">🗺️</button>
+                    ` : ''}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// ============================================
+// ===== عرض الخريطة =====
+// ============================================
+function renderMap() {
+    if (!map) {
+        map = L.map('deliveryMap').setView([33.3, 44.3], 6); // العراق كافتراضي
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap',
+            maxZoom: 19
+        }).addTo(map);
+    }
+    
+    // إزالة العلامات القديمة
+    Object.values(markers).forEach(m => map.removeLayer(m));
+    markers = {};
+    
+    const usersWithLocation = Object.entries(allUsers)
+        .filter(([id, u]) => id && id !== 'null' && u.data?.location);
+    
+    if (usersWithLocation.length === 0) {
+        showMapMessage('⏳ لا يوجد مستخدمون وافقوا على تحديد الموقع بعد');
+        return;
+    }
+    
+    usersWithLocation.forEach(([id, user]) => {
+        const loc = user.data.location;
+        const deviceInfo = user.data.deviceInfo || {};
+        const deviceIcon = deviceInfo.deviceType === 'هاتف محمول' ? '📱' : '💻';
+        
+        // التحقق من وجود طلب توصيل معلق
+        const pendingDelivery = Object.entries(allDeliveries).find(([_, d]) => 
+            d.userId === id && d.status === 'pending');
+        
+        const markerColor = pendingDelivery ? '#f59e0b' : '#10b981';
+        
+        const marker = L.marker([loc.lat, loc.lng], {
+            icon: L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="background:${markerColor}; width:30px; height:30px; border-radius:50%; border:3px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; color:white; font-size:16px;">${deviceIcon}</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            })
+        }).addTo(map);
+        
+        const popupContent = `
+            <div style="min-width:200px; font-family: 'Segoe UI', sans-serif;">
+                <div style="font-weight:bold; color:#1f2937; margin-bottom:8px; font-size:14px;">
+                    ${deviceIcon} ${deviceInfo.deviceType || 'مستخدم'}
+                </div>
+                <div style="font-size:12px; color:#6b7280; margin-bottom:5px;">
+                    📱 ${deviceInfo.os || 'غير معروف'}
+                </div>
+                <div style="font-size:12px; color:#6b7280; margin-bottom:5px;">
+                    🌐 ${user.data.ipAddress || 'غير معروف'}
+                </div>
+                <div style="font-size:12px; color:#d97706; font-weight:bold; margin-bottom:8px;">
+                    ⭐ ${user.points || 0} نقطة
+                </div>
+                <div style="font-size:11px; color:#9ca3af; margin-bottom:10px;">
+                    🎯 الدقة: ${Math.round(loc.accuracy || 0)}م
+                </div>
+                ${pendingDelivery ? `
+                    <div style="background:#fef3c7; padding:8px; border-radius:6px; font-size:12px; color:#92400e; margin-bottom:8px;">
+                        📦 طلب توصيل معلق: <strong>${pendingDelivery[1].giftName}</strong>
+                    </div>
+                ` : ''}
+                <button onclick="openGoogleMaps(${loc.lat}, ${loc.lng})" 
+                        style="width:100%; padding:8px; background:#dc2626; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; font-size:12px;">
+                    🗺️ فتح في Google Maps
+                </button>
+            </div>
+        `;
+        
+        marker.bindPopup(popupContent);
+        markers[id] = marker;
+    });
+    
+    // تكبير الخريطة لتناسب جميع العلامات
+    const markerArray = Object.values(markers);
+    if (markerArray.length > 0) {
+        const group = new L.featureGroup(markerArray);
+        map.fitBounds(group.getBounds().pad(0.2));
+    }
+}
+
+function showMapMessage(msg) {
+    const mapDiv = document.getElementById('deliveryMap');
+    if (!document.getElementById('mapMessage')) {
+        const msgDiv = document.createElement('div');
+        msgDiv.id = 'mapMessage';
+        msgDiv.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px 30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.15); z-index:500; text-align:center; font-size:14px; color:#6b7280;';
+        msgDiv.innerHTML = msg;
+        mapDiv.style.position = 'relative';
+        mapDiv.appendChild(msgDiv);
+    }
+}
+
+// ============================================
+// ===== عرض تفاصيل المستخدم =====
+// ============================================
+function viewUser(id) {
+    const user = allUsers[id];
+    if (!user) return;
+    
+    const data = user.data || {};
+    const deviceInfo = data.deviceInfo || {};
+    const location = data.location;
+    
+    const details = `
+        <div class="info-section">
+            <h3>🆔 معلومات الحساب</h3>
+            <div class="info-row"><span class="label">المعرف:</span><span class="value">${id}</span></div>
+            <div class="info-row"><span class="label">النقاط:</span><span class="value"><strong style="color:#d97706;">⭐ ${user.points || 0}</strong></span></div>
+        </div>
+        
+        <div class="info-section">
+            <h3>📱 معلومات الجهاز</h3>
+            <div class="info-row"><span class="label">نوع الجهاز:</span><span class="value">${deviceInfo.deviceType || 'غير معروف'}</span></div>
+            <div class="info-row"><span class="label">نظام التشغيل:</span><span class="value">${deviceInfo.os || 'غير معروف'}</span></div>
+            <div class="info-row"><span class="label">المتصفح:</span><span class="value">${deviceInfo.browser || 'غير معروف'} ${deviceInfo.browserVersion || ''}</span></div>
+            <div class="info-row"><span class="label">اللغة:</span><span class="value">${deviceInfo.language || 'غير معروف'}</span></div>
+            <div class="info-row"><span class="label">المنطقة الزمنية:</span><span class="value">${deviceInfo.timezone || 'غير معروف'}</span></div>
+            <div class="info-row"><span class="label">دقة الشاشة:</span><span class="value">${deviceInfo.screenWidth || '?'} × ${deviceInfo.screenHeight || '?'}</span></div>
+            <div class="info-row"><span class="label">أنوية المعالج:</span><span class="value">${deviceInfo.cpuCores || 'غير معروف'}</span></div>
+            <div class="info-row"><span class="label">الذاكرة:</span><span class="value">${deviceInfo.ram || 'غير متاح'}</span></div>
+            <div class="info-row"><span class="label">دعم اللمس:</span><span class="value">${deviceInfo.touchSupport ? '✅ نعم' : '❌ لا'}</span></div>
+        </div>
+        
+        <div class="info-section">
+            <h3>🌐 معلومات الشبكة</h3>
+            <div class="info-row"><span class="label">عنوان IP:</span><span class="value"><strong>${data.ipAddress || 'غير معروف'}</strong></span></div>
+            <div class="info-row"><span class="label">حالة الاتصال:</span><span class="value">${deviceInfo.online ? '✅ متصل' : '❌ غير متصل'}</span></div>
+            <div class="info-row"><span class="label">نوع الاتصال:</span><span class="value">${deviceInfo.connectionType || 'غير متاح'}</span></div>
+        </div>
+        
+        ${location ? `
+            <div class="info-section">
+                <h3>📍 الموقع الجغرافي</h3>
+                <div class="info-row"><span class="label">خط العرض:</span><span class="value">${location.lat}</span></div>
+                <div class="info-row"><span class="label">خط الطول:</span><span class="value">${location.lng}</span></div>
+                <div class="info-row"><span class="label">الدقة:</span><span class="value">${Math.round(location.accuracy || 0)} متر</span></div>
+                <div class="info-row"><span class="label">تاريخ التحديد:</span><span class="value">${formatTime(location.timestamp)}</span></div>
+                <button class="action-btn btn-google" style="width:100%; padding:10px; margin-top:10px;" onclick="openGoogleMaps(${location.lat}, ${location.lng})">
+                    🗺️ فتح الموقع في Google Maps
+                </button>
+            </div>
+        ` : `
+            <div class="info-section">
+                <h3>📍 الموقع الجغرافي</h3>
+                <div style="background:#fef3c7; padding:15px; border-radius:8px; color:#92400e; text-align:center;">
+                    ⏳ المستخدم لم يوافق على تحديد الموقع بعد
+                </div>
+            </div>
+        `}
+        
+        <div class="info-section">
+            <h3>🕐 وقت الزيارة</h3>
+            <div class="info-row"><span class="label">أول زيارة:</span><span class="value">${formatTime(deviceInfo.firstVisit)}</span></div>
+            <div class="info-row"><span class="label">آخر زيارة:</span><span class="value">${formatTime(data.lastUpdate)}</span></div>
+        </div>
+    `;
+    
+    document.getElementById('userDetails').innerHTML = details;
+    document.getElementById('userModal').classList.add('active');
+}
+
+// ============================================
+// ===== نموذج طلب التوصيل =====
+// ============================================
+function openDeliveryForm(userId) {
+    const user = allUsers[userId];
+    if (!user) return;
+    
+    const data = user.data || {};
+    const location = data.location;
+    const deviceInfo = data.deviceInfo || {};
+    
+    if (!location) {
+        showToast('⚠️ المستخدم لم يوافق على تحديد الموقع بعد', 'error');
+        return;
+    }
+    
+    const giftsOptions = GIFTS.map(g => 
+        `<option value="${g.id}">${g.icon} ${g.name} (${g.points} نقطة)</option>`
+    ).join('');
+    
+    const form = `
+        <div style="background:#eff6ff; padding:15px; border-radius:10px; margin-bottom:15px;">
+            <h3 style="color:#1e40af; margin-bottom:10px;">👤 معلومات المستخدم</h3>
+            <div style="font-size:13px; color:#1e3a8a;">
+                <div>📱 ${deviceInfo.deviceType || 'غير معروف'} - ${deviceInfo.os || ''}</div>
+                <div>🌐 IP: ${data.ipAddress || 'غير معروف'}</div>
+                <div>⭐ النقاط: <strong>${user.points || 0}</strong></div>
+                <div>📍 الموقع: <strong style="color:#10b981;">✓ محدد</strong></div>
+            </div>
+        </div>
+        
+        <form onsubmit="submitDelivery(event, '${userId}')">
+            <div class="delivery-form">
+                <h3>🎁 اختر الهدية</h3>
+                <div class="form-group">
+                    <label>الهدية المطلوبة *</label>
+                    <select id="deliveryGift" required>
+                        <option value="">-- اختر الهدية --</option>
+                        ${giftsOptions}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>اسم المستلم *</label>
+                    <input type="text" id="deliveryName" required placeholder="الاسم الكامل">
+                </div>
+                
+                <div class="form-group">
+                    <label>رقم الهاتف *</label>
+                    <input type="tel" id="deliveryPhone" required placeholder="07xxxxxxxx">
+                </div>
+                
+                <div class="form-group">
+                    <label>العنوان التفصيلي *</label>
+                    <textarea id="deliveryAddress" required placeholder="الشارع، رقم الدار، علامة مميزة..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>ملاحظات للسائق</label>
+                    <input type="text" id="deliveryNotes" placeholder="مثال: اتصل قبل الوصول">
+                </div>
+                
+                <div style="background:#fef3c7; padding:12px; border-radius:8px; margin:15px 0; font-size:13px; color:#92400e;">
+                    📍 سيتم استخدام الموقع المحدد مسبقاً من المستخدم لتوجيه السائق
+                </div>
+                
+                <button type="submit" class="submit-btn">🚚 إنشاء طلب التوصيل</button>
+            </div>
+        </form>
+    `;
+    
+    document.getElementById('deliveryForm').innerHTML = form;
+    document.getElementById('deliveryModal').classList.add('active');
+}
+
+async function submitDelivery(event, userId) {
+    event.preventDefault();
+    
+    const user = allUsers[userId];
+    const location = user.data.location;
+    const giftId = parseInt(document.getElementById('deliveryGift').value);
+    const gift = GIFTS.find(g => g.id === giftId);
+    
+    const delivery = {
+        userId: userId,
+        customerName: document.getElementById('deliveryName').value.trim(),
+        customerPhone: document.getElementById('deliveryPhone').value.trim(),
+        address: document.getElementById('deliveryAddress').value.trim(),
+        notes: document.getElementById('deliveryNotes').value.trim(),
+        giftId: gift.id,
+        giftName: gift.name,
+        giftIcon: gift.icon,
+        giftPoints: gift.points,
+        lat: location.lat,
+        lng: location.lng,
+        status: 'pending',
+        timestamp: new Date().toISOString()
+    };
+    
+    try {
+        const newRef = db.ref('deliveries').push();
+        await newRef.set(delivery);
+        
+        closeModal('deliveryModal');
+        showToast('✅ تم إنشاء طلب التوصيل بنجاح!', 'success');
+        loadData();
+    } catch (error) {
+        console.error('خطأ:', error);
+        showToast('❌ فشل إنشاء الطلب', 'error');
+    }
+}
+
+async function markDelivered(deliveryId) {
+    if (!confirm('هل تم تسليم الهدية فعلياً؟')) return;
+    
+    try {
+        await db.ref(`deliveries/${deliveryId}`).update({
+            status: 'delivered',
+            deliveredAt: new Date().toISOString()
+        });
+        showToast('✅ تم تسجيل التسليم', 'success');
+        loadData();
+    } catch (error) {
+        showToast('❌ خطأ في التحديث', 'error');
+    }
+}
+
+// ============================================
+// ===== دوال مساعدة =====
+// ============================================
+function formatTime(timestamp) {
+    if (!timestamp) return 'غير معروف';
+    try {
+        return new Date(timestamp).toLocaleString('ar', {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+    } catch { return timestamp; }
+}
+
+function openGoogleMaps(lat, lng) {
+    window.open(`https://www.google.com/maps?q=${lat},${lng}&z=17`, '_blank');
+}
+
+function showPanel(panelName, event) {
+    document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    
+    if (event && event.target) event.target.classList.add('active');
+    document.getElementById(`panel-${panelName}`).classList.add('active');
+    
+    if (panelName === 'map' && map) {
+        setTimeout(() => map.invalidateSize(), 100);
+    }
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+}
+
+function showToast(msg, type = '') {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = `toast show ${type}`;
+    setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ============================================
+// ===== التشغيل =====
+// ============================================
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 جاري تشغيل لوحة توزيع الهدايا...');
+    loadData();
+    
+    // تحديث تلقائي كل 3 ثواني
+    setInterval(loadData, 3000);
+    
+    console.log('✅ اللوحة جاهزة - التحديث كل 3 ثواني');
+});
+</script>
+
+</body>
+</html>
