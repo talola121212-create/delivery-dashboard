@@ -329,3 +329,203 @@
                         <div class="legend-dot" style="background:#10b981;"></div>
                         <span>مستخدم لديه موقع</span>
                     </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background:#f59e0b;"></div>
+                        <span>بانتظار التوصيل</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background:#8b5cf6;"></div>
+                        <span>تم التوصيل</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background:#ef4444;"></div>
+                        <span>غير متصل</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- ===== Deliveries Section ===== -->
+    <section class="section" id="section-deliveries">
+        <div class="section-header">
+            <h1>📦 إدارة التوصيلات</h1>
+            <p class="section-subtitle">متابعة وإدارة جميع طلبات التوصيل</p>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h3>📋 طلبات التوصيل</h3>
+                <button class="btn" onclick="openNewDeliveryModal()">➕ طلب جديد</button>
+            </div>
+            <div class="card-body">
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>رقم الطلب</th>
+                                <th>المستلم</th>
+                                <th>الهاتف</th>
+                                <th>الهدية</th>
+                                <th>العنوان</th>
+                                <th>الحالة</th>
+                                <th>التاريخ</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deliveriesTableBody">
+                            <tr><td colspan="8" class="loading-state">جاري التحميل...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- ===== Analytics Section ===== -->
+    <section class="section" id="section-analytics">
+        <div class="section-header">
+            <h1>📈 التحليلات والإحصائيات</h1>
+            <p class="section-subtitle">تحليلات متقدمة لبيانات المستخدمين</p>
+        </div>
+        
+        <div class="dashboard-grid two-cols">
+            <div class="card">
+                <div class="card-header"><h3>🌍 توزيع الدول</h3></div>
+                <div class="card-body">
+                    <div id="countriesChart" class="chart-container"></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header"><h3>⏰ أكثر أوقات النشاط</h3></div>
+                <div class="card-body">
+                    <div id="hoursChart" class="chart-container"></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header"><h3>💻 أنظمة التشغيل</h3></div>
+                <div class="card-body">
+                    <div id="osChart" class="chart-container"></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header"><h3>📶 أنواع الاتصال</h3></div>
+                <div class="card-body">
+                    <div id="connectionChart" class="chart-container"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- ===== Settings Section ===== -->
+    <section class="section" id="section-settings">
+        <div class="section-header">
+            <h1>⚙️ الإعدادات</h1>
+            <p class="section-subtitle">تخصيص لوحة التحكم</p>
+        </div>
+        
+        <div class="card">
+            <div class="card-header"><h3>🎨 المظهر</h3></div>
+            <div class="card-body">
+                <div class="settings-group">
+                    <label>الوضع الليلي</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="darkModeToggle" onchange="toggleTheme()">
+                        <label for="darkModeToggle"></label>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <label>سرعة التحديث (ثواني)</label>
+                    <select id="refreshInterval" onchange="changeRefreshInterval(this.value)">
+                        <option value="3000">3 ثواني (سريع)</option>
+                        <option value="5000" selected>5 ثواني (افتراضي)</option>
+                        <option value="10000">10 ثواني</option>
+                        <option value="30000">30 ثانية</option>
+                    </select>
+                </div>
+                <div class="settings-group">
+                    <label>الإشعارات الصوتية</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="soundToggle" checked>
+                        <label for="soundToggle"></label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header"><h3>💾 إدارة البيانات</h3></div>
+            <div class="card-body">
+                <div class="settings-actions">
+                    <button class="btn" onclick="exportData()">📥 تصدير جميع البيانات</button>
+                    <button class="btn btn-danger" onclick="clearLocalData()">🗑️ مسح البيانات المحلية</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header"><h3>ℹ️ معلومات النظام</h3></div>
+            <div class="card-body">
+                <div class="info-row"><span class="label">إصدار اللوحة:</span><span class="value">Pro v2.0</span></div>
+                <div class="info-row"><span class="label">قاعدة البيانات:</span><span class="value">Firebase Realtime</span></div>
+                <div class="info-row"><span class="label">Project ID:</span><span class="value">switgame-a4227</span></div>
+                <div class="info-row"><span class="label">المنطقة:</span><span class="value">asia-southeast1</span></div>
+                <div class="info-row"><span class="label">آخر تحديث:</span><span class="value" id="lastUpdateTime">-</span></div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- ===== User Details Modal ===== -->
+<div class="modal-overlay" id="userModal">
+    <div class="modal modal-large">
+        <div class="modal-header">
+            <h2>👤 تفاصيل المستخدم</h2>
+            <button class="close-btn" onclick="closeModal('userModal')">✕</button>
+        </div>
+        <div class="modal-body" id="userDetails"></div>
+    </div>
+</div>
+
+<!-- ===== Delivery Modal ===== -->
+<div class="modal-overlay" id="deliveryModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>🚚 إنشاء طلب توصيل</h2>
+            <button class="close-btn" onclick="closeModal('deliveryModal')">✕</button>
+        </div>
+        <div class="modal-body" id="deliveryForm"></div>
+    </div>
+</div>
+
+<!-- ===== Notifications Panel ===== -->
+<div class="notifications-panel" id="notificationsPanel">
+    <div class="notifications-header">
+        <h3>🔔 الإشعارات</h3>
+        <button class="btn btn-sm" onclick="clearNotifications()">مسح الكل</button>
+    </div>
+    <div class="notifications-list" id="notificationsList">
+        <div class="empty-state small">
+            <p>لا توجد إشعارات</p>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Toast ===== -->
+<div class="toast" id="toast"></div>
+
+<!-- JavaScript Files - بالترتيب الصحيح -->
+<script src="js/firebase-config.js"></script>
+<script src="js/ui-utils.js"></script>
+<script src="js/data-manager.js"></script>
+<script src="js/users-module.js"></script>
+<script src="js/map-module.js"></script>
+<script src="js/delivery-module.js"></script>
+<script src="js/stats-module.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
