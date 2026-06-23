@@ -1,214 +1,273 @@
 // ============================================
-// ===== data-manager.js - إدارة البيانات =====
+// ===== users-module.js - وحدة المستخدمين =====
 // ============================================
 
-const DataManager = {
-    allUsers: {},
-    allDeliveries: {},
-    refreshInterval: 5000,
-    intervalId: null,
-    previousUsersCount: 0,
+const UsersModule = {
+    currentSort: 'lastVisit',
+    currentSortDir: 'desc',
+    currentFilters: {},
 
-    // تحميل جميع البيانات
-    async loadAllData() {
-        try {
-            // تحميل المستخدمين
-            const usersSnap = await db.ref('users').once('value');
-            const newUsers = usersSnap.val() || {};
-            
-            // كشف المستخدمين الجدد
-            this.detectNewUsers(newUsers);
-            
-            this.allUsers = newUsers;
-            
-            // تحميل التوصيلات
-            const deliveriesSnap = await db.ref('deliveries').once('value');
-            this.allDeliveries = deliveriesSnap.val() || {};
-            
-            // تحديث جميع الوحدات
-            this.updateAllModules();
-            
-            // تحديث العدادات في الشريط الجانبي
-            this.updateBadges();
-            
-            console.log('✅ تم تحديث البيانات -', new Date().toLocaleTimeString('ar'));
-        } catch (error) {
-            console.error('❌ خطأ في تحميل البيانات:', error);
-            UIUtils.showToast('❌ خطأ في تحميل البيانات', 'error');
-        }
+    // عرض المستخدمين
+    render() {
+        this.renderTable();
+        this.updateCount();
     },
 
-    // كشف المستخدمين الجدد
-    detectNewUsers(newUsers) {
-        const newIds = Object.keys(newUsers).filter(id => 
-            id && id !== 'null' && id !== 'undefined' && !this.allUsers[id]
-        );
+    // تحديث العدد
+    updateCount() {
+        const users = DataManager.filterUsers(this.currentFilters);
+        const countEl = document.getElementById('usersCount');
+        if (countEl) countEl.textContent = users.length;
+    },
+
+    // عرض الجدول
+    renderTable() {
+        const tbody = document.getElementById('usersTableBody');
+        if (!tbody) return;
         
-        if (newIds.length > 0 && this.previousUsersCount > 0) {
-            newIds.forEach(id => {
-                const user = newUsers[id];
-                const deviceInfo = user.data?.deviceInfo || {};
-                UIUtils.addNotification(
-                    '🆕 مستخدم جديد!',
-                    `${deviceInfo.deviceType || 'جهاز'} - ${deviceInfo.os || ''}`,
-                    'new-user'
-                );
-            });
+        const users = DataManager.filterUsers({
+            ...this.currentFilters,
+            sortBy: this.currentSort,
+            sortDir: this.currentSortDir
+        });
+        
+        if (users.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="empty-state">
+                        <div class="icon">📭</div>
+                        <h3>لا يوجد مستخدمون</h3>
+                        <p>جرب تغيير الفلاتر أو البحث</p>
+                    </td>
+                </tr>
+            `;
+            return;
         }
         
-        this.previousUsersCount = Object.keys(newUsers).filter(id => id && id !== 'null').length;
-    },
-
-    // تحديث جميع الوحدات
-    updateAllModules() {
-        if (typeof StatsModule !== 'undefined') StatsModule.update();
-        if (typeof UsersModule !== 'undefined') UsersModule.render();
-        if (typeof MapModule !== 'undefined') MapModule.render();
-        if (typeof DeliveryModule !== 'undefined') DeliveryModule.render();
-    },
-
-    // تحديث العدادات
-    updateBadges() {
-        const validUsers = Object.keys(this.allUsers).filter(id => id && id !== 'null' && id !== 'undefined');
-        const pendingCount = Object.values(this.allDeliveries).filter(d => d.status === 'pending').length;
-        
-        const usersBadge = document.getElementById('usersBadge');
-        const deliveriesBadge = document.getElementById('deliveriesBadge');
-        
-        if (usersBadge) usersBadge.textContent = validUsers.length;
-        if (deliveriesBadge) deliveriesBadge.textContent = pendingCount;
-    },
-
-    // الحصول على مستخدم معين
-    getUser(id) {
-        return this.allUsers[id];
-    },
-
-    // الحصول على جميع المستخدمين الصالحين
-    getValidUsers() {
-        return Object.entries(this.allUsers).filter(([id]) => 
-            id && id !== 'null' && id !== 'undefined'
-        );
-    },
-
-    // الحصول على المستخدمين ذوي المواقع
-    getUsersWithLocation() {
-        return this.getValidUsers().filter(([_, u]) => u.data?.location);
+        tbody.innerHTML = users.map(([id, user]) => {
+            const data = user.data || {};
+            const deviceInfo = data.deviceInfo || {};
+            const location = data.location;
+            const points = user.points || 0;
+            const lastVisit = UIUtils.formatTime(data.lastUpdate);
+            const deviceIcon = UIUtils.getDeviceIcon(deviceInfo.deviceType);
+            
+            return `
+                <tr>
+                    <td title="${id}">
+                        <small style="color:var(--text-muted);">${UIUtils.truncate(id, 18)}</small>
+                    </td>
+                    <td>
+                        <span style="font-size:18px; margin-left:5px;">${deviceIcon}</span>
+                        ${deviceInfo.deviceType || 'غير معروف'}
+                    </td>
+                    <td>${deviceInfo.os || 'غير معروف'}</td>
+                    <td>${deviceInfo.browser || 'غير معروف'}</td>
+                    <td>
+                        <code style="background:var(--bg-tertiary); padding:2px 6px; border-radius:4px; font-size:11px;">
+                            ${data.ipAddress || 'غير معروف'}
+                        </code>
+                    </td>
+                    <td>${UIUtils.getLocationBadge(location)}</td>
+                    <td><strong style="color:#d97706;">⭐ ${points}</strong></td>
+                    <td><small>${lastVisit}</small></td>
+                    <td>
+                        <div style="display:flex; gap:3px; flex-wrap:wrap;">
+                            <button class="btn btn-sm" style="background:#3b82f6;" onclick="UsersModule.viewUser('${id}')" title="عرض">👁️</button>
+                            ${location ? `<button class="btn btn-sm" style="background:#dc2626;" onclick="UIUtils.openGoogleMaps(${location.lat}, ${location.lng})" title="خريطة">🗺️</button>` : ''}
+                            <button class="btn btn-sm" style="background:#f59e0b;" onclick="DeliveryModule.openForm('${id}')" title="توصيل">🚚</button>
+                            <button class="btn btn-sm" style="background:#6b7280;" onclick="UsersModule.copyUserInfo('${id}')" title="نسخ">📋</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
     },
 
     // فلترة المستخدمين
-    filterUsers(options = {}) {
-        let users = this.getValidUsers();
-        
-        // فلترة بالبحث
-        if (options.search) {
-            const search = options.search.toLowerCase();
-            users = users.filter(([id, u]) => {
-                const data = u.data || {};
-                return id.toLowerCase().includes(search) ||
-                       data.ipAddress?.toLowerCase().includes(search) ||
-                       data.deviceInfo?.browser?.toLowerCase().includes(search) ||
-                       data.deviceInfo?.os?.toLowerCase().includes(search);
-            });
-        }
-        
-        // فلترة بنوع الجهاز
-        if (options.device) {
-            users = users.filter(([_, u]) => 
-                u.data?.deviceInfo?.deviceType === options.device
-            );
-        }
-        
-        // فلترة بالموقع
-        if (options.location === 'located') {
-            users = users.filter(([_, u]) => u.data?.location);
-        } else if (options.location === 'not-located') {
-            users = users.filter(([_, u]) => !u.data?.location);
-        }
-        
-        // فلترة بالاتصال
-        if (options.online === 'online') {
-            users = users.filter(([_, u]) => u.data?.deviceInfo?.online);
-        } else if (options.online === 'offline') {
-            users = users.filter(([_, u]) => !u.data?.deviceInfo?.online);
-        }
-        
-        // الترتيب
-        if (options.sortBy) {
-            users = this.sortUsers(users, options.sortBy, options.sortDir || 'desc');
-        }
-        
-        return users;
-    },
-
-    // ترتيب المستخدمين
-    sortUsers(users, sortBy, direction = 'desc') {
-        return users.sort((a, b) => {
-            let valA, valB;
-            
-            switch(sortBy) {
-                case 'points':
-                    valA = a[1].points || 0;
-                    valB = b[1].points || 0;
-                    break;
-                case 'lastVisit':
-                    valA = new Date(a[1].data?.lastUpdate || 0).getTime();
-                    valB = new Date(b[1].data?.lastUpdate || 0).getTime();
-                    break;
-                case 'firstVisit':
-                    valA = new Date(a[1].data?.deviceInfo?.firstVisit || 0).getTime();
-                    valB = new Date(b[1].data?.deviceInfo?.firstVisit || 0).getTime();
-                    break;
-                default:
-                    valA = a[0];
-                    valB = b[0];
-            }
-            
-            return direction === 'desc' ? valB - valA : valA - valB;
-        });
-    },
-
-    // بدء التحديث التلقائي
-    startAutoRefresh(interval = 5000) {
-        this.refreshInterval = interval;
-        if (this.intervalId) clearInterval(this.intervalId);
-        this.intervalId = setInterval(() => this.loadAllData(), interval);
-        console.log(`🔄 التحديث التلقائي كل ${interval/1000} ثانية`);
-    },
-
-    // إيقاف التحديث التلقائي
-    stopAutoRefresh() {
-        if (this.intervalId) {
-            clearInterval(this.intervalId);
-            this.intervalId = null;
-        }
-    },
-
-    // تغيير سرعة التحديث
-    changeRefreshInterval(interval) {
-        this.startAutoRefresh(parseInt(interval));
-        UIUtils.showToast(`🔄 التحديث كل ${interval/1000} ثانية`, 'success');
-    },
-
-    // تصدير جميع البيانات
-    exportAllData() {
-        const data = {
-            users: this.allUsers,
-            deliveries: this.allDeliveries,
-            exportDate: new Date().toISOString(),
-            totalUsers: this.getValidUsers().length,
-            totalDeliveries: Object.keys(this.allDeliveries).length
+    filter() {
+        this.currentFilters = {
+            search: document.getElementById('userSearch')?.value || '',
+            device: document.getElementById('filterDevice')?.value || '',
+            location: document.getElementById('filterLocation')?.value || '',
+            online: document.getElementById('filterOnline')?.value || ''
         };
         
-        UIUtils.exportToJSON(data, 'delivery_dashboard_backup');
+        const sortBy = document.getElementById('sortBy')?.value || 'lastVisit';
+        this.currentSort = sortBy;
+        
+        this.renderTable();
+        this.updateCount();
     },
 
-    // مسح البيانات المحلية
-    clearLocalData() {
-        if (confirm('⚠️ هل أنت متأكد من مسح جميع البيانات المحلية؟')) {
-            localStorage.clear();
-            UIUtils.showToast('🗑️ تم مسح البيانات المحلية', 'success');
-            setTimeout(() => location.reload(), 1000);
+    // ترتيب الجدول
+    sortTable(column) {
+        if (this.currentSort === column) {
+            this.currentSortDir = this.currentSortDir === 'desc' ? 'asc' : 'desc';
+        } else {
+            this.currentSort = column;
+            this.currentSortDir = 'desc';
         }
+        this.renderTable();
+    },
+
+    // عرض تفاصيل المستخدم
+    viewUser(id) {
+        const user = DataManager.getUser(id);
+        if (!user) return;
+        
+        const data = user.data || {};
+        const deviceInfo = data.deviceInfo || {};
+        const location = data.location;
+        const deviceIcon = UIUtils.getDeviceIcon(deviceInfo.deviceType);
+        
+        const details = `
+            <div class="user-profile-header">
+                <div class="device-icon">${deviceIcon}</div>
+                <h3>${deviceInfo.deviceType || 'مستخدم'}</h3>
+                <p>${deviceInfo.os || ''} - ${deviceInfo.browser || ''}</p>
+            </div>
+            
+            <div class="info-section">
+                <h3>🆔 معلومات الحساب</h3>
+                <div class="info-row">
+                    <span class="label">المعرف:</span>
+                    <span class="value" style="font-size:11px;">${id}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">النقاط:</span>
+                    <span class="value"><strong style="color:#d97706;">⭐ ${user.points || 0}</strong></span>
+                </div>
+            </div>
+            
+            <div class="info-section">
+                <h3>📱 معلومات الجهاز</h3>
+                <div class="info-row"><span class="label">نوع الجهاز:</span><span class="value">${deviceInfo.deviceType || 'غير معروف'}</span></div>
+                <div class="info-row"><span class="label">نظام التشغيل:</span><span class="value">${deviceInfo.os || 'غير معروف'}</span></div>
+                <div class="info-row"><span class="label">المتصفح:</span><span class="value">${deviceInfo.browser || ''} ${deviceInfo.browserVersion || ''}</span></div>
+                <div class="info-row"><span class="label">اللغة:</span><span class="value">${deviceInfo.language || 'غير معروف'}</span></div>
+                <div class="info-row"><span class="label">المنطقة الزمنية:</span><span class="value">${deviceInfo.timezone || 'غير معروف'}</span></div>
+                <div class="info-row"><span class="label">دقة الشاشة:</span><span class="value">${deviceInfo.screenWidth || '?'} × ${deviceInfo.screenHeight || '?'}</span></div>
+                <div class="info-row"><span class="label">حجم النافذة:</span><span class="value">${deviceInfo.windowWidth || '?'} × ${deviceInfo.windowHeight || '?'}</span></div>
+                <div class="info-row"><span class="label">أنوية المعالج:</span><span class="value">${deviceInfo.cpuCores || 'غير معروف'}</span></div>
+                <div class="info-row"><span class="label">الذاكرة:</span><span class="value">${deviceInfo.ram || 'غير متاح'}</span></div>
+                <div class="info-row"><span class="label">دعم اللمس:</span><span class="value">${deviceInfo.touchSupport ? '✅ نعم' : '❌ لا'}</span></div>
+                <div class="info-row"><span class="label">المنصة:</span><span class="value">${deviceInfo.platform || 'غير معروف'}</span></div>
+            </div>
+            
+            <div class="info-section">
+                <h3>🌐 معلومات الشبكة</h3>
+                <div class="info-row">
+                    <span class="label">عنوان IP:</span>
+                    <span class="value"><strong>${data.ipAddress || 'غير معروف'}</strong></span>
+                </div>
+                <div class="info-row"><span class="label">حالة الاتصال:</span><span class="value">${UIUtils.getOnlineBadge(deviceInfo.online)}</span></div>
+                <div class="info-row"><span class="label">نوع الاتصال:</span><span class="value">${deviceInfo.connectionType || 'غير متاح'}</span></div>
+            </div>
+            
+            ${location ? `
+                <div class="info-section">
+                    <h3>📍 الموقع الجغرافي</h3>
+                    <div class="info-row"><span class="label">خط العرض:</span><span class="value">${location.lat}</span></div>
+                    <div class="info-row"><span class="label">خط الطول:</span><span class="value">${location.lng}</span></div>
+                    <div class="info-row"><span class="label">الدقة:</span><span class="value">${Math.round(location.accuracy || 0)} متر</span></div>
+                    <div class="info-row"><span class="label">تاريخ التحديد:</span><span class="value">${UIUtils.formatFullTime(location.timestamp)}</span></div>
+                    <div class="modal-actions">
+                        <button class="btn" onclick="UIUtils.openGoogleMaps(${location.lat}, ${location.lng})">🗺️ فتح في Google Maps</button>
+                        <button class="btn btn-secondary" onclick="UIUtils.copyToClipboard('${location.lat}, ${location.lng}')">📋 نسخ الإحداثيات</button>
+                    </div>
+                </div>
+            ` : `
+                <div class="info-section">
+                    <h3>📍 الموقع الجغرافي</h3>
+                    <div class="info-box warning">
+                        <span class="icon">⏳</span>
+                        <span>المستخدم لم يوافق على تحديد الموقع بعد</span>
+                    </div>
+                </div>
+            `}
+            
+            <div class="info-section">
+                <h3>🕐 وقت الزيارة</h3>
+                <div class="info-row"><span class="label">أول زيارة:</span><span class="value">${UIUtils.formatFullTime(deviceInfo.firstVisit)}</span></div>
+                <div class="info-row"><span class="label">آخر زيارة:</span><span class="value">${UIUtils.formatFullTime(data.lastUpdate)}</span></div>
+            </div>
+            
+            <div class="info-section">
+                <h3>🔗 User Agent</h3>
+                <div class="info-box info">
+                    <span style="font-size:11px; word-break:break-all;">${deviceInfo.userAgent || 'غير متوفر'}</span>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('userDetails').innerHTML = details;
+        UIUtils.openModal('userModal');
+    },
+
+    // نسخ معلومات المستخدم
+    async copyUserInfo(id) {
+        const user = DataManager.getUser(id);
+        if (!user) return;
+        
+        const data = user.data || {};
+        const location = data.location;
+        
+        const info = `
+=== معلومات المستخدم ===
+المعرف: ${id}
+النقاط: ${user.points || 0}
+الجهاز: ${data.deviceInfo?.deviceType || 'غير معروف'}
+النظام: ${data.deviceInfo?.os || 'غير معروف'}
+المتصفح: ${data.deviceInfo?.browser || 'غير معروف'}
+IP: ${data.ipAddress || 'غير معروف'}
+الموقع: ${location ? `${location.lat}, ${location.lng}` : 'غير محدد'}
+آخر زيارة: ${UIUtils.formatFullTime(data.lastUpdate)}
+        `.trim();
+        
+        await UIUtils.copyToClipboard(info);
+    },
+
+    // تصدير المستخدمين إلى CSV
+    exportCSV() {
+        const users = DataManager.filterUsers(this.currentFilters).map(([id, user]) => {
+            const data = user.data || {};
+            const deviceInfo = data.deviceInfo || {};
+            const location = data.location;
+            
+            return {
+                'المعرف': id,
+                'نوع الجهاز': deviceInfo.deviceType || '',
+                'نظام التشغيل': deviceInfo.os || '',
+                'المتصفح': deviceInfo.browser || '',
+                'الإصدار': deviceInfo.browserVersion || '',
+                'IP': data.ipAddress || '',
+                'النقاط': user.points || 0,
+                'خط العرض': location?.lat || '',
+                'خط الطول': location?.lng || '',
+                'الدقة': location?.accuracy || '',
+                'الاتصال': deviceInfo.online ? 'متصل' : 'غير متصل',
+                'نوع الاتصال': deviceInfo.connectionType || '',
+                'أول زيارة': deviceInfo.firstVisit || '',
+                'آخر زيارة': data.lastUpdate || ''
+            };
+        });
+        
+        UIUtils.exportToCSV(users, 'users');
+    },
+
+    // تصدير المستخدمين إلى JSON
+    exportJSON() {
+        const users = DataManager.filterUsers(this.currentFilters).map(([id, user]) => ({
+            id, ...user
+        }));
+        
+        UIUtils.exportToJSON(users, 'users');
     }
 };
+
+// دوال عامة للوصول من HTML
+function filterUsers() { UsersModule.filter(); }
+function sortTable(col) { UsersModule.sortTable(col); }
+function exportUsersCSV() { UsersModule.exportCSV(); }
+function exportUsersJSON() { UsersModule.exportJSON(); }
