@@ -1,5 +1,5 @@
 // ============================================
-// ===== app.js - التطبيق الرئيسي (النسخة المُصلحة) =====
+// ===== app.js - التطبيق الرئيسي =====
 // ============================================
 
 const App = {
@@ -36,32 +36,33 @@ const App = {
         }
         
         if (window.innerWidth <= 768) {
-            document.getElementById('sidebar').classList.remove('mobile-open');
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) sidebar.classList.remove('mobile-open');
         }
     }
 };
 
-// ===== تعريف جميع الدوال عالمياً =====
+// ===== تعريف جميع الدوال عالمياً (مهم جداً!) =====
 window.switchSection = function(name, event) {
     if (event) event.preventDefault();
     App.switchSection(name);
 };
 
 window.toggleSidebar = function() {
-    if (typeof UIUtils !== 'undefined') {
-        UIUtils.toggleSidebar();
-    }
+    if (typeof UIUtils !== 'undefined') UIUtils.toggleSidebar();
 };
 
 window.toggleTheme = function() {
-    if (typeof UIUtils !== 'undefined') {
-        UIUtils.toggleTheme();
-    }
+    if (typeof UIUtils !== 'undefined') UIUtils.toggleTheme();
 };
 
 window.refreshData = function() {
     if (typeof DataManager !== 'undefined') {
         DataManager.loadAllData();
+        const lastUpdateEl = document.getElementById('lastUpdateTime');
+        if (lastUpdateEl) {
+            lastUpdateEl.textContent = new Date().toLocaleString('ar');
+        }
         if (typeof UIUtils !== 'undefined') {
             UIUtils.showToast('🔄 تم تحديث البيانات', 'success');
         }
@@ -69,21 +70,15 @@ window.refreshData = function() {
 };
 
 window.exportData = function() {
-    if (typeof DataManager !== 'undefined') {
-        DataManager.exportAllData();
-    }
+    if (typeof DataManager !== 'undefined') DataManager.exportAllData();
 };
 
 window.toggleNotifications = function() {
-    if (typeof UIUtils !== 'undefined') {
-        UIUtils.toggleNotifications();
-    }
+    if (typeof UIUtils !== 'undefined') UIUtils.toggleNotifications();
 };
 
 window.clearNotifications = function() {
-    if (typeof UIUtils !== 'undefined') {
-        UIUtils.clearNotifications();
-    }
+    if (typeof UIUtils !== 'undefined') UIUtils.clearNotifications();
 };
 
 window.handleGlobalSearch = function(value) {
@@ -92,59 +87,49 @@ window.handleGlobalSearch = function(value) {
         const searchInput = document.getElementById('userSearch');
         if (searchInput) {
             searchInput.value = value;
-            if (typeof UsersModule !== 'undefined') {
-                UsersModule.filter();
-            }
+            if (typeof UsersModule !== 'undefined') UsersModule.filter();
         }
     }
 };
 
 window.changeRefreshInterval = function(interval) {
-    if (typeof DataManager !== 'undefined') {
-        DataManager.changeRefreshInterval(interval);
-    }
+    if (typeof DataManager !== 'undefined') DataManager.changeRefreshInterval(interval);
 };
 
 window.clearLocalData = function() {
-    if (typeof DataManager !== 'undefined') {
-        DataManager.clearLocalData();
-    }
+    if (typeof DataManager !== 'undefined') DataManager.clearLocalData();
 };
 
 window.closeModal = function(id) {
-    if (typeof UIUtils !== 'undefined') {
-        UIUtils.closeModal(id);
-    }
+    if (typeof UIUtils !== 'undefined') UIUtils.closeModal(id);
 };
 
 window.filterUsers = function() {
-    if (typeof UsersModule !== 'undefined') {
-        UsersModule.filter();
-    }
+    if (typeof UsersModule !== 'undefined') UsersModule.filter();
 };
 
 window.sortTable = function(col) {
-    if (typeof UsersModule !== 'undefined') {
-        UsersModule.sortTable(col);
-    }
+    if (typeof UsersModule !== 'undefined') UsersModule.sortTable(col);
 };
 
 window.exportUsersCSV = function() {
-    if (typeof UsersModule !== 'undefined') {
-        UsersModule.exportCSV();
-    }
+    if (typeof UsersModule !== 'undefined') UsersModule.exportCSV();
 };
 
 window.exportUsersJSON = function() {
-    if (typeof UsersModule !== 'undefined') {
-        UsersModule.exportJSON();
-    }
+    if (typeof UsersModule !== 'undefined') UsersModule.exportJSON();
 };
 
 window.openNewDeliveryModal = function() {
-    if (typeof DeliveryModule !== 'undefined') {
-        DeliveryModule.openNewForm();
-    }
+    if (typeof DeliveryModule !== 'undefined') DeliveryModule.openNewForm();
+};
+
+window.centerMap = function() {
+    if (typeof MapModule !== 'undefined') MapModule.centerMap();
+};
+
+window.toggleHeatmap = function() {
+    if (typeof MapModule !== 'undefined') MapModule.toggleHeatmap();
 };
 
 window.clearActivity = function() {
@@ -174,6 +159,7 @@ document.addEventListener('keydown', (e) => {
         document.querySelectorAll('.modal-overlay.active').forEach(m => {
             m.classList.remove('active');
         });
-        document.getElementById('notificationsPanel')?.classList.remove('active');
+        const notifPanel = document.getElementById('notificationsPanel');
+        if (notifPanel) notifPanel.classList.remove('active');
     }
 });
