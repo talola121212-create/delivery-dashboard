@@ -1,0 +1,236 @@
+/* ============================================
+   map.css - أنماط الخريطة
+   ============================================ */
+
+.map-container {
+    height: 600px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    position: relative;
+}
+
+.map-legend {
+    display: flex;
+    gap: 15px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 15px;
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-secondary);
+    padding: 8px 15px;
+    border-radius: 20px;
+    box-shadow: var(--shadow-sm);
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.legend-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Custom Marker Styles */
+.custom-marker {
+    background: transparent !important;
+    border: none !important;
+}
+
+.marker-pulse {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(16, 185, 129, 0.3);
+    animation: markerPulse 2s infinite;
+    top: -5px;
+    left: -5px;
+}
+
+@keyframes markerPulse {
+    0% { transform: scale(0.8); opacity: 1; }
+    100% { transform: scale(2); opacity: 0; }
+}
+
+/* Popup Styles */
+.leaflet-popup-content-wrapper {
+    border-radius: 12px !important;
+    padding: 0 !important;
+}
+
+.leaflet-popup-content {
+    margin: 0 !important;
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif !important;
+}
+
+.user-popup {
+    min-width: 250px;
+    padding: 15px;
+}
+
+.popup-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 10px;
+}
+
+.popup-icon {
+    font-size: 30px;
+}
+
+.popup-title {
+    font-weight: bold;
+    color: #1f2937;
+    font-size: 15px;
+}
+
+.popup-info {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.popup-info strong {
+    color: #d97706;
+}
+
+.popup-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.popup-btn {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.popup-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.popup-btn.primary {
+    background: #dc2626;
+    color: white;
+}
+
+.popup-btn.secondary {
+    background: #3b82f6;
+    color: white;
+}
+
+/* Map Controls */
+.map-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 400;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.map-control-btn {
+    background: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transition: all 0.2s;
+}
+
+.map-control-btn:hover {
+    background: #f3f4f6;
+    transform: scale(1.05);
+}
+
+/* Map Stats Overlay */
+.map-stats {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    z-index: 400;
+    min-width: 200px;
+}
+
+.map-stats h4 {
+    font-size: 14px;
+    color: #1f2937;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.map-stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-bottom: 5px;
+    color: #6b7280;
+}
+
+.map-stat-row strong {
+    color: #1f2937;
+}
+
+/* Map Message */
+.map-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 30px 40px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    z-index: 500;
+    text-align: center;
+    max-width: 400px;
+}
+
+.map-message .icon {
+    font-size: 60px;
+    margin-bottom: 15px;
+}
+
+.map-message h3 {
+    color: #1f2937;
+    margin-bottom: 10px;
+}
+
+.map-message p {
+    color: #6b7280;
+    font-size: 14px;
+    line-height: 1.6;
+}
